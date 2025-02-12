@@ -11,6 +11,11 @@ import { ProtectedRoute } from './components/ProtectedRoute';
 import { Layout } from './components/Layout';
 import { useAuth } from './contexts/AuthContext';
 
+const AuthCallback = () => {
+  const { session } = useAuth();
+  return session ? <Navigate to="/dashboard" replace /> : <Navigate to="/" replace />;
+};
+
 const AppRoutes = () => {
   const { session, loading } = useAuth();
 
@@ -26,6 +31,7 @@ const AppRoutes = () => {
           session ? <Navigate to="/dashboard" replace /> : <Auth />
         }
       />
+      <Route path="/auth/callback" element={<AuthCallback />} />
       <Route element={<ProtectedRoute />}>
         <Route
           element={<Layout />}
