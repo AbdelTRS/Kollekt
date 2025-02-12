@@ -29,6 +29,7 @@ import {
   Button,
   UnorderedList,
   ListItem,
+  SimpleGrid,
 } from '@chakra-ui/react';
 import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
@@ -54,6 +55,15 @@ type Sale = {
   extension_id?: number;
   purchase_price?: number;
   card_purchase_price?: number;
+  sub_type?: string;
+  language?: 'FR' | 'JAP';
+};
+
+type LabelColor = {
+  id: number;
+  category: string;
+  value: string;
+  color: string;
 };
 
 export const MySales = () => {
@@ -70,6 +80,7 @@ export const MySales = () => {
   const [selectedExtensionId, setSelectedExtensionId] = useState<number | null>(null);
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
+  const [labelColors, setLabelColors] = useState<LabelColor[]>([]);
 
   // États pour les données
   const [isLoading, setIsLoading] = useState(true);
@@ -89,6 +100,7 @@ export const MySales = () => {
     if (session?.user?.id) {
       fetchSales();
       fetchSeriesAndExtensions();
+      loadLabelColors();
     }
   }, [session?.user?.id]);
 
@@ -124,7 +136,9 @@ export const MySales = () => {
             series_id,
             extension_id,
             purchase_price,
-            card_purchase_price
+            card_purchase_price,
+            sub_type,
+            language
           )
         `)
         .eq('user_id', session.user.id);
@@ -141,7 +155,9 @@ export const MySales = () => {
         series_id: sale.items.series_id,
         extension_id: sale.items.extension_id,
         purchase_price: sale.items.purchase_price,
-        card_purchase_price: sale.items.card_purchase_price
+        card_purchase_price: sale.items.card_purchase_price,
+        sub_type: sale.items.sub_type,
+        language: sale.items.language
       }));
 
       setSales(transformedSales);
@@ -184,6 +200,19 @@ export const MySales = () => {
         duration: 3000,
         isClosable: true,
       });
+    }
+  };
+
+  const loadLabelColors = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('label_colors')
+        .select('*');
+
+      if (error) throw error;
+      setLabelColors(data || []);
+    } catch (error) {
+      console.error('Erreur lors du chargement des couleurs:', error);
     }
   };
 
@@ -306,6 +335,12 @@ export const MySales = () => {
     }
   };
 
+  // Fonction pour obtenir la couleur d'une étiquette
+  const getLabelColor = (category: string, value: string): string => {
+    const label = labelColors.find(l => l.category === category && l.value === value);
+    return label?.color || 'gray';
+  };
+
   return (
     <Container maxW="container.xl" py={10}>
       <VStack spacing={6} align="stretch">
@@ -315,8 +350,9 @@ export const MySales = () => {
         <SalesStats sales={filteredSales} />
 
         {/* Filtres */}
-        <VStack spacing={4}>
-          <HStack spacing={4} width="100%">
+        <VStack spacing={4} width="100%">
+          {/* Première ligne de filtres */}
+          <SimpleGrid columns={{ base: 1, md: 2, lg: 4 }} spacing={4} width="100%">
             <Select
               value={itemType}
               onChange={(e) => setItemType(e.target.value as 'ALL' | 'SCELLE' | 'CARTE')}
@@ -360,9 +396,10 @@ export const MySales = () => {
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
             />
-          </HStack>
+          </SimpleGrid>
 
-          <HStack spacing={4} width="100%">
+          {/* Deuxième ligne de filtres */}
+          <SimpleGrid columns={{ base: 1, md: 2 }} spacing={4} width="100%">
             <Input
               type="date"
               value={startDate}
@@ -375,103 +412,129 @@ export const MySales = () => {
               onChange={(e) => setEndDate(e.target.value)}
               placeholder="Date de fin"
             />
-          </HStack>
+          </SimpleGrid>
         </VStack>
 
         {/* Liste des ventes */}
-        <TableContainer>
-          <Table variant="simple">
-            <Thead>
-              <Tr>
-                <Th width="50px">Image</Th>
-                <Th>Nom</Th>
-                <Th>Extension</Th>
-                <Th 
-                  sx={{ cursor: 'pointer' }}
-                  onClick={() => handleSort('price')}
-                >
-                  <HStack spacing={1}>
-                    <Text>Prix unitaire</Text>
-                    {sortField === 'price' && (
-                      <Box>{sortDirection === 'asc' ? '▲' : '▼'}</Box>
-                    )}
-                  </HStack>
-                </Th>
-                <Th 
-                  sx={{ cursor: 'pointer' }}
-                  onClick={() => handleSort('quantity')}
-                >
-                  <HStack spacing={1}>
-                    <Text>Quantité</Text>
-                    {sortField === 'quantity' && (
-                      <Box>{sortDirection === 'asc' ? '▲' : '▼'}</Box>
-                    )}
-                  </HStack>
-                </Th>
-                <Th>Montant total</Th>
-                <Th 
-                  sx={{ cursor: 'pointer' }}
-                  onClick={() => handleSort('date')}
-                >
-                  <HStack spacing={1}>
-                    <Text>Date de vente</Text>
-                    {sortField === 'date' && (
-                      <Box>{sortDirection === 'asc' ? '▲' : '▼'}</Box>
-                    )}
-                  </HStack>
-                </Th>
-                <Th>Lieu de vente</Th>
-                <Th width="50px">Actions</Th>
-              </Tr>
-            </Thead>
-            <Tbody>
-              {filteredSales.map((sale) => (
-                <Tr key={sale.id}>
-                  <Td>
-                    <Image
-                      src={sale.type === 'CARTE' 
-                        ? sale.card_image 
-                        : sale.sealed_image 
-                          ? `https://odryoxqrsdhsdhfueqqs.supabase.co/storage/v1/object/public/sealed-images/${session?.user?.id}/${sale.sealed_image}`
-                          : undefined
-                      }
-                      alt={sale.type === 'CARTE' ? sale.card_name : sale.item_name}
-                      boxSize="50px"
-                      objectFit="contain"
-                      fallback={<Box boxSize="50px" bg="gray.100" />}
-                    />
-                  </Td>
-                  <Td>
-                    <Text>{sale.type === 'CARTE' ? sale.card_name : sale.item_name}</Text>
-                    <Badge colorScheme={sale.type === 'CARTE' ? 'blue' : 'green'}>
-                      {sale.type}
-                    </Badge>
-                  </Td>
-                  <Td>
-                    {extensions.find(e => e.id === sale.extension_id)?.code || '-'}
-                  </Td>
-                  <Td>{sale.sale_price.toFixed(2)}€</Td>
-                  <Td>{sale.quantity}</Td>
-                  <Td>{(sale.sale_price * sale.quantity).toFixed(2)}€</Td>
-                  <Td>{new Date(sale.sale_date).toLocaleDateString()}</Td>
-                  <Td>{sale.sale_location}</Td>
-                  <Td>
-                    <IconButton
-                      aria-label="Supprimer la vente"
-                      icon={<DeleteIcon />}
-                      colorScheme="red"
-                      size="sm"
-                      onClick={() => {
-                        setSaleToDelete(sale);
-                        onDeleteModalOpen();
-                      }}
-                    />
-                  </Td>
+        <Box width="100%">
+          <TableContainer>
+            <Table variant="simple" size={{ base: "sm", md: "md" }}>
+              <Thead>
+                <Tr>
+                  <Th width="50px" display={{ base: "none", md: "table-cell" }}>Image</Th>
+                  <Th minWidth="200px">Nom</Th>
+                  <Th display={{ base: "none", lg: "table-cell" }}>Extension</Th>
+                  <Th 
+                    sx={{ cursor: 'pointer' }}
+                    onClick={() => handleSort('price')}
+                    minWidth="80px"
+                  >
+                    <HStack spacing={1}>
+                      <Text>Prix</Text>
+                      {sortField === 'price' && (
+                        <Box>{sortDirection === 'asc' ? '▲' : '▼'}</Box>
+                      )}
+                    </HStack>
+                  </Th>
+                  <Th 
+                    sx={{ cursor: 'pointer' }}
+                    onClick={() => handleSort('quantity')}
+                    display={{ base: "none", md: "table-cell" }}
+                    minWidth="60px"
+                  >
+                    <HStack spacing={1}>
+                      <Text>Qté</Text>
+                      {sortField === 'quantity' && (
+                        <Box>{sortDirection === 'asc' ? '▲' : '▼'}</Box>
+                      )}
+                    </HStack>
+                  </Th>
+                  <Th display={{ base: "none", lg: "table-cell" }} minWidth="80px">Total</Th>
+                  <Th 
+                    sx={{ cursor: 'pointer' }}
+                    onClick={() => handleSort('date')}
+                    minWidth="100px"
+                  >
+                    <HStack spacing={1}>
+                      <Text>Date</Text>
+                      {sortField === 'date' && (
+                        <Box>{sortDirection === 'asc' ? '▲' : '▼'}</Box>
+                      )}
+                    </HStack>
+                  </Th>
+                  <Th display={{ base: "none", lg: "table-cell" }} minWidth="120px">Lieu</Th>
+                  <Th width="50px">Actions</Th>
                 </Tr>
-              ))}
-            </Tbody>
-          </Table>
-        </TableContainer>
+              </Thead>
+              <Tbody>
+                {filteredSales.map((sale) => (
+                  <Tr key={sale.id}>
+                    <Td display={{ base: "none", md: "table-cell" }}>
+                      <Image
+                        src={sale.type === 'CARTE' 
+                          ? sale.card_image 
+                          : sale.sealed_image 
+                            ? `https://odryoxqrsdhsdhfueqqs.supabase.co/storage/v1/object/public/sealed-images/${session?.user?.id}/${sale.sealed_image}`
+                            : undefined
+                        }
+                        alt={sale.type === 'CARTE' ? sale.card_name : sale.item_name}
+                        boxSize="50px"
+                        objectFit="contain"
+                        fallback={<Box boxSize="50px" bg="gray.100" />}
+                      />
+                    </Td>
+                    <Td>
+                      <VStack align="start" spacing={2}>
+                        <Text noOfLines={2}>{sale.type === 'CARTE' ? sale.card_name : sale.item_name}</Text>
+                        <HStack wrap="wrap" spacing={2}>
+                          {sale.type === 'CARTE' && sale.language && (
+                            <Badge 
+                              colorScheme={getLabelColor('card_language', sale.language)}
+                              variant="solid"
+                            >
+                              {sale.language}
+                            </Badge>
+                          )}
+                          {sale.type === 'SCELLE' && sale.sub_type && (
+                            <Badge 
+                              colorScheme={getLabelColor('sealed_type', sale.sub_type)}
+                              variant="solid"
+                            >
+                              {sale.sub_type}
+                            </Badge>
+                          )}
+                          <Text fontSize="sm" display={{ base: "inline", md: "none" }}>
+                            x{sale.quantity}
+                          </Text>
+                        </HStack>
+                      </VStack>
+                    </Td>
+                    <Td display={{ base: "none", lg: "table-cell" }}>
+                      {extensions.find(e => e.id === sale.extension_id)?.code || '-'}
+                    </Td>
+                    <Td whiteSpace="nowrap">{sale.sale_price.toFixed(2)}€</Td>
+                    <Td display={{ base: "none", md: "table-cell" }}>{sale.quantity}</Td>
+                    <Td display={{ base: "none", lg: "table-cell" }} whiteSpace="nowrap">{(sale.sale_price * sale.quantity).toFixed(2)}€</Td>
+                    <Td whiteSpace="nowrap">{new Date(sale.sale_date).toLocaleDateString()}</Td>
+                    <Td display={{ base: "none", lg: "table-cell" }}>{sale.sale_location}</Td>
+                    <Td>
+                      <IconButton
+                        aria-label="Supprimer la vente"
+                        icon={<DeleteIcon />}
+                        colorScheme="red"
+                        size="sm"
+                        onClick={() => {
+                          setSaleToDelete(sale);
+                          onDeleteModalOpen();
+                        }}
+                      />
+                    </Td>
+                  </Tr>
+                ))}
+              </Tbody>
+            </Table>
+          </TableContainer>
+        </Box>
       </VStack>
 
       {/* Modal de confirmation de suppression */}
