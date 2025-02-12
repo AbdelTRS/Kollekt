@@ -91,6 +91,13 @@ type GroupedItem = {
   items: Item[];
 };
 
+type LabelColor = {
+  id: number;
+  category: string;
+  value: string;
+  color: string;
+};
+
 export const MyCollection = () => {
   const { session } = useAuth();
   const toast = useToast();
@@ -179,6 +186,8 @@ export const MyCollection = () => {
     purchase_date: '',
     purchase_location: ''
   });
+
+  const [labelColors, setLabelColors] = useState<LabelColor[]>([]);
 
   // Charger les items quand la session change
   useEffect(() => {
@@ -646,6 +655,31 @@ export const MyCollection = () => {
     }
   };
 
+  // Ajouter cette fonction pour charger les couleurs
+  const loadLabelColors = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('label_colors')
+        .select('*');
+
+      if (error) throw error;
+      setLabelColors(data || []);
+    } catch (error) {
+      console.error('Erreur lors du chargement des couleurs:', error);
+    }
+  };
+
+  // Ajouter loadLabelColors à useEffect
+  useEffect(() => {
+    loadLabelColors();
+  }, []);
+
+  // Fonction pour obtenir la couleur d'une étiquette
+  const getLabelColor = (category: string, value: string): string => {
+    const label = labelColors.find(l => l.category === category && l.value === value);
+    return label?.color || 'gray';
+  };
+
   return (
     <Container maxW="container.xl" py={10}>
       <VStack spacing={6} align="stretch">
@@ -866,11 +900,23 @@ export const MyCollection = () => {
                   </Td>
                   <Td sx={{ userSelect: 'none' }}>
                     <Text>{group.type === 'CARTE' ? group.card_name : group.item_name}</Text>
-                    {group.type === 'CARTE' && (
-                      <Badge colorScheme="blue">{group.language}</Badge>
+                    {group.type === 'CARTE' && group.language && (
+                      <Badge 
+                        colorScheme={getLabelColor('card_language', group.language)}
+                        variant="solid"
+                        ml={2}
+                      >
+                        {group.language}
+                      </Badge>
                     )}
                     {group.type === 'SCELLE' && group.sub_type && (
-                      <Badge colorScheme="green">{group.sub_type}</Badge>
+                      <Badge 
+                        colorScheme={getLabelColor('sealed_type', group.sub_type)}
+                        variant="solid"
+                        ml={2}
+                      >
+                        {group.sub_type}
+                      </Badge>
                     )}
                   </Td>
                   <Td sx={{ userSelect: 'none' }}>

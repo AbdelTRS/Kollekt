@@ -1013,6 +1013,14 @@ export const AddItem = () => {
                                       <option value="Display">Display</option>
                                       <option value="Coffret">Coffret</option>
                                       <option value="UPC">UPC</option>
+                                      <option value="Tripack">Tripack</option>
+                                      <option value="Duopack">Duopack</option>
+                                      <option value="Bundle">Bundle</option>
+                                      <option value="Demi display">Demi display</option>
+                                      <option value="Mini-tins">Mini-tins</option>
+                                      <option value="Tin cube">Tin cube</option>
+                                      <option value="Booster en lose">Booster en lose</option>
+                                      <option value="Artset">Artset</option>
                                     </Select>
                                   </FormControl>
 
