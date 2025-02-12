@@ -144,7 +144,6 @@ export const AddItem = () => {
   // États pour les séries et extensions
   const [series, setSeries] = useState<Series[]>([]);
   const [extensions, setExtensions] = useState<Extension[]>([]);
-  const [filteredExtensions, setFilteredExtensions] = useState<Extension[]>([]);
   const [selectedSeriesId, setSelectedSeriesId] = useState<number | null>(null);
   const [selectedExtensionId, setSelectedExtensionId] = useState<number | null>(null);
 
@@ -250,16 +249,6 @@ export const AddItem = () => {
     loadExtensions();
   }, []);
 
-  // Fonction pour filtrer les extensions en fonction de la série sélectionnée
-  useEffect(() => {
-    if (selectedSeriesId) {
-      const filtered = extensions.filter((extension: Extension) => extension.series_id === selectedSeriesId);
-      setFilteredExtensions(filtered);
-    } else {
-      setFilteredExtensions(extensions);
-    }
-  }, [selectedSeriesId, extensions]);
-
   // Fonction pour charger les cartes d'un set
   const loadSetCards = async (setId: string) => {
     try {
@@ -289,7 +278,7 @@ export const AddItem = () => {
       const extensionsToSearch = selectedExtensionId 
         ? extensions.filter((ext: Extension) => ext.id === selectedExtensionId)
         : selectedSeriesId
-          ? filteredExtensions
+          ? extensions
           : extensions;
 
       for (const extension of extensionsToSearch) {
@@ -833,6 +822,40 @@ export const AddItem = () => {
     ));
   };
 
+  // Fonction pour obtenir les extensions filtrées pour un formulaire spécifique
+  const getFilteredExtensions = (seriesId: number | null) => {
+    if (!seriesId) return [];
+    return extensions.filter(extension => extension.series_id === seriesId);
+  };
+
+  // Fonction pour mettre à jour la série dans un formulaire scellé
+  const handleSealedSeriesChange = (formId: string, seriesId: number | null) => {
+    setSealedForms(forms => forms.map(form => {
+      if (form.id === formId) {
+        return {
+          ...form,
+          selectedSeriesId: seriesId,
+          selectedExtensionId: null // Réinitialiser l'extension quand on change de série
+        };
+      }
+      return form;
+    }));
+  };
+
+  // Fonction pour mettre à jour la série dans un formulaire carte
+  const handleCardSeriesChange = (formId: string, seriesId: number | null) => {
+    setCardForms(forms => forms.map(form => {
+      if (form.id === formId) {
+        return {
+          ...form,
+          selectedSeriesId: seriesId,
+          selectedExtensionId: null // Réinitialiser l'extension quand on change de série
+        };
+      }
+      return form;
+    }));
+  };
+
   return (
     <Container maxW="container.xl" py={10}>
       <VStack spacing={6} align="stretch">
@@ -926,7 +949,7 @@ export const AddItem = () => {
                                     <Select
                                       size="lg"
                                       value={form.selectedSeriesId?.toString() || ''}
-                                      onChange={(e) => updateSealedForm(form.id, 'selectedSeriesId', e.target.value ? parseInt(e.target.value) : null)}
+                                      onChange={(e) => handleSealedSeriesChange(form.id, e.target.value ? parseInt(e.target.value) : null)}
                                       placeholder="Sélectionner une série"
                                     >
                                       {series.map((serie) => (
@@ -946,7 +969,7 @@ export const AddItem = () => {
                                       placeholder="Sélectionner une extension"
                                       isDisabled={!form.selectedSeriesId}
                                     >
-                                      {filteredExtensions.map((extension) => (
+                                      {getFilteredExtensions(form.selectedSeriesId).map((extension) => (
                                         <option key={extension.id} value={extension.id}>
                                           {extension.name} ({extension.code})
                                         </option>
@@ -1181,7 +1204,7 @@ export const AddItem = () => {
                                     <Select
                                       size="lg"
                                       value={form.selectedSeriesId?.toString() || ''}
-                                      onChange={(e) => updateCardForm(form.id, 'selectedSeriesId', e.target.value ? parseInt(e.target.value) : null)}
+                                      onChange={(e) => handleCardSeriesChange(form.id, e.target.value ? parseInt(e.target.value) : null)}
                                       placeholder="Sélectionner une série"
                                     >
                                       {series.map((serie) => (
@@ -1197,11 +1220,11 @@ export const AddItem = () => {
                                     <Select
                                       size="lg"
                                       value={form.selectedExtensionId?.toString() || ''}
-                                      onChange={(e) => setSelectedExtensionId(e.target.value ? parseInt(e.target.value) : null)}
+                                      onChange={(e) => updateCardForm(form.id, 'selectedExtensionId', e.target.value ? parseInt(e.target.value) : null)}
                                       placeholder="Sélectionner une extension"
                                       isDisabled={!form.selectedSeriesId}
                                     >
-                                      {filteredExtensions.map((extension) => (
+                                      {getFilteredExtensions(form.selectedSeriesId).map((extension) => (
                                         <option key={extension.id} value={extension.id}>
                                           {extension.name} ({extension.code})
                                         </option>
