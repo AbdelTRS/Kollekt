@@ -37,13 +37,14 @@ import {
   Grid,
   SimpleGrid,
   useColorModeValue,
+  Card,
 } from '@chakra-ui/react';
 import { useState, useEffect, useMemo } from 'react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { CollectionStats } from '../components/CollectionStats';
 import { Series, Extension } from '../types/pokemon';
-import { EditIcon, DeleteIcon } from '@chakra-ui/icons';
+import { EditIcon, DeleteIcon, AddIcon } from '@chakra-ui/icons';
 
 type Item = {
   id: string;
@@ -169,6 +170,15 @@ export const MyCollection = () => {
   const borderColor = useColorModeValue('gray.200', 'gray.600');
   const modalBg = useColorModeValue('white', 'gray.800');
   const textColor = useColorModeValue('gray.800', 'white');
+
+  // Ajouter avant le return de la Modal
+  const [showNewPurchaseForm, setShowNewPurchaseForm] = useState(false);
+  const [newPurchase, setNewPurchase] = useState({
+    quantity: 1,
+    purchase_price: '',
+    purchase_date: '',
+    purchase_location: ''
+  });
 
   // Charger les items quand la session change
   useEffect(() => {
@@ -555,6 +565,79 @@ export const MyCollection = () => {
     } catch (error: any) {
       toast({
         title: 'Erreur lors de l\'enregistrement de la vente',
+        description: error.message,
+        status: 'error',
+        duration: 3000,
+        isClosable: true,
+      });
+    }
+  };
+
+  const handleAddPurchase = async () => {
+    if (!selectedGroupedItem || !session?.user?.id) return;
+
+    try {
+      // Récupérer l'image depuis le premier item qui en a une
+      const existingImage = selectedGroupedItem.items.find(item => 
+        selectedGroupedItem.type === 'CARTE' 
+          ? item.card_image 
+          : item.sealed_image
+      );
+
+      const fullImageUrl = selectedGroupedItem.type === 'CARTE'
+        ? existingImage?.card_image
+        : existingImage?.sealed_image;
+
+      if (!fullImageUrl) {
+        throw new Error('Aucune image trouvée pour cet item');
+      }
+
+      // Extraire le nom du fichier de l'URL complète
+      const imageFileName = fullImageUrl.split('/').pop();
+      
+      if (!imageFileName) {
+        throw new Error('Impossible d\'extraire le nom du fichier de l\'image');
+      }
+
+      const { error } = await supabase.from('items').insert({
+        user_id: session.user.id,
+        type: selectedGroupedItem.type,
+        sub_type: selectedGroupedItem.sub_type,
+        item_name: selectedGroupedItem.item_name,
+        card_name: selectedGroupedItem.card_name,
+        card_image: selectedGroupedItem.type === 'CARTE' ? imageFileName : undefined,
+        sealed_image: selectedGroupedItem.type === 'SCELLE' ? imageFileName : undefined,
+        quantity: newPurchase.quantity,
+        purchase_price: parseFloat(newPurchase.purchase_price),
+        purchase_date: newPurchase.purchase_date,
+        purchase_location: newPurchase.purchase_location,
+        series_id: selectedGroupedItem.series_id,
+        extension_id: selectedGroupedItem.extension_id
+      });
+
+      if (error) throw error;
+
+      // Rafraîchir les données
+      fetchItems();
+      
+      // Réinitialiser le formulaire
+      setNewPurchase({
+        quantity: 1,
+        purchase_price: '',
+        purchase_date: '',
+        purchase_location: ''
+      });
+      setShowNewPurchaseForm(false);
+
+      toast({
+        title: 'Achat ajouté avec succès',
+        status: 'success',
+        duration: 2000,
+        isClosable: true,
+      });
+    } catch (error: any) {
+      toast({
+        title: 'Erreur lors de l\'ajout',
         description: error.message,
         status: 'error',
         duration: 3000,
@@ -1122,6 +1205,84 @@ export const MyCollection = () => {
                     ))}
                   </Tbody>
                 </Table>
+
+                <Box mt={6}>
+                  <Button
+                    leftIcon={<AddIcon />}
+                    colorScheme="blue"
+                    onClick={() => setShowNewPurchaseForm(!showNewPurchaseForm)}
+                    mb={4}
+                  >
+                    Ajouter un nouvel achat
+                  </Button>
+
+                  {showNewPurchaseForm && (
+                    <Card p={4} mt={4}>
+                      <VStack spacing={4}>
+                        <FormControl isRequired>
+                          <FormLabel>Quantité</FormLabel>
+                          <NumberInput min={1} value={newPurchase.quantity}>
+                            <NumberInputField
+                              onChange={(e) => setNewPurchase({
+                                ...newPurchase,
+                                quantity: parseInt(e.target.value) || 1
+                              })}
+                            />
+                          </NumberInput>
+                        </FormControl>
+
+                        <FormControl isRequired>
+                          <FormLabel>Prix d'achat</FormLabel>
+                          <NumberInput>
+                            <NumberInputField
+                              value={newPurchase.purchase_price}
+                              onChange={(e) => setNewPurchase({
+                                ...newPurchase,
+                                purchase_price: e.target.value
+                              })}
+                            />
+                          </NumberInput>
+                        </FormControl>
+
+                        <FormControl isRequired>
+                          <FormLabel>Date d'achat</FormLabel>
+                          <Input
+                            type="date"
+                            value={newPurchase.purchase_date}
+                            onChange={(e) => setNewPurchase({
+                              ...newPurchase,
+                              purchase_date: e.target.value
+                            })}
+                          />
+                        </FormControl>
+
+                        <FormControl isRequired>
+                          <FormLabel>Lieu d'achat</FormLabel>
+                          <Input
+                            value={newPurchase.purchase_location}
+                            onChange={(e) => setNewPurchase({
+                              ...newPurchase,
+                              purchase_location: e.target.value
+                            })}
+                          />
+                        </FormControl>
+
+                        <Button
+                          colorScheme="blue"
+                          onClick={handleAddPurchase}
+                          isDisabled={
+                            !newPurchase.quantity ||
+                            !newPurchase.purchase_price ||
+                            !newPurchase.purchase_date ||
+                            !newPurchase.purchase_location
+                          }
+                        >
+                          Ajouter l'achat
+                        </Button>
+                      </VStack>
+                    </Card>
+                  )}
+                </Box>
               </VStack>
             </ModalBody>
           </ModalContent>
