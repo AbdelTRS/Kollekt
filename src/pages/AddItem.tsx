@@ -287,19 +287,28 @@ export const AddItem = () => {
           const serie = series.find(s => s.id === extension.series_id);
           if (!serie) continue;
 
-          // Adapter le format de l'URL en fonction de la série
-          let serieCode = serie.code.toLowerCase();
-          let extensionCode = extension.code.toLowerCase();
-          
-          // Gérer les cas spéciaux pour les anciennes séries
-          if (serieCode === 'xy' || serieCode === 'cl' || serieCode === 'nb' || 
-              serieCode === 'hgss' || serieCode === 'pl' || serieCode === 'dp' || 
-              serieCode === 'ex' || serieCode === 'wiz') {
-            serieCode = 'swsh'; // Utiliser une série plus récente comme fallback
-            extensionCode = 'sv1'; // Utiliser une extension plus récente comme fallback
+          // Vérifier si c'est une ancienne série (XY ou plus ancienne)
+          const isOldSeries = ['XY', 'NB', 'CL', 'HGSS', 'PL', 'DP', 'EX', 'WIZ'].includes(serie.code);
+
+          if (isOldSeries) {
+            // Pour les anciennes séries, on utilise une approche différente
+            // On crée une carte factice avec le nom recherché
+            // car l'API TCGdex ne supporte pas ces anciennes séries
+            if (query.toLowerCase().includes(extension.name.toLowerCase())) {
+              allCards.push({
+                id: `${extension.id}-custom`,
+                name: query,
+                image: '', // L'utilisateur devra uploader sa propre image
+                cardNumber: '',
+              });
+            }
+            continue;
           }
 
-          // Construire l'URL de l'API avec le bon format
+          // Pour les séries récentes, on continue avec l'API TCGdex
+          const serieCode = serie.code.toLowerCase();
+          const extensionCode = extension.code.toLowerCase();
+
           const apiUrl = `https://api.tcgdex.net/v2/fr/sets/${serieCode}/${extensionCode}/cards`;
           console.log('Tentative d\'appel API:', apiUrl);
 
