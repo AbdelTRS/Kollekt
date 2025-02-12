@@ -9,7 +9,11 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
     autoRefreshToken: true,
     persistSession: true,
     detectSessionInUrl: true,
-    flowType: 'pkce',
-    redirectTo: `${siteUrl}/auth/callback`
+    flowType: 'pkce'
+  },
+  global: {
+    headers: {
+      'x-redirect-url': `${siteUrl}/auth/callback`
+    }
   }
 }) 
