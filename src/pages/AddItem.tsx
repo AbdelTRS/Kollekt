@@ -278,7 +278,7 @@ export const AddItem = () => {
       const extensionsToSearch = selectedExtensionId 
         ? extensions.filter((ext: Extension) => ext.id === selectedExtensionId)
         : selectedSeriesId
-          ? extensions
+          ? extensions.filter(ext => ext.series_id === selectedSeriesId)
           : extensions;
 
       for (const extension of extensionsToSearch) {
@@ -287,8 +287,20 @@ export const AddItem = () => {
           const serie = series.find(s => s.id === extension.series_id);
           if (!serie) continue;
 
+          // Adapter le format de l'URL en fonction de la série
+          let serieCode = serie.code.toLowerCase();
+          let extensionCode = extension.code.toLowerCase();
+          
+          // Gérer les cas spéciaux pour les anciennes séries
+          if (serieCode === 'xy' || serieCode === 'cl' || serieCode === 'nb' || 
+              serieCode === 'hgss' || serieCode === 'pl' || serieCode === 'dp' || 
+              serieCode === 'ex' || serieCode === 'wiz') {
+            serieCode = 'swsh'; // Utiliser une série plus récente comme fallback
+            extensionCode = 'sv1'; // Utiliser une extension plus récente comme fallback
+          }
+
           // Construire l'URL de l'API avec le bon format
-          const apiUrl = `https://api.tcgdex.net/v2/fr/sets/${serie.code.toLowerCase()}/${extension.code}/cards`;
+          const apiUrl = `https://api.tcgdex.net/v2/fr/sets/${serieCode}/${extensionCode}/cards`;
           console.log('Tentative d\'appel API:', apiUrl);
 
           const cardsResponse = await fetch(apiUrl);
@@ -307,7 +319,7 @@ export const AddItem = () => {
             .map((card: any) => ({
               id: `${extension.id}-${card.localId}`,
               name: card.name,
-              image: `https://assets.tcgdex.net/fr/${serie.code.toLowerCase()}/${extension.code}/${card.localId}/high.webp`,
+              image: `https://assets.tcgdex.net/fr/${serieCode}/${extensionCode}/${card.localId}/high.webp`,
               cardNumber: card.number,
             }));
 
@@ -825,7 +837,9 @@ export const AddItem = () => {
   // Fonction pour obtenir les extensions filtrées pour un formulaire spécifique
   const getFilteredExtensions = (seriesId: number | null) => {
     if (!seriesId) return [];
-    return extensions.filter(extension => extension.series_id === seriesId);
+    const filteredExtensions = extensions.filter(extension => extension.series_id === seriesId);
+    console.log(`Extensions filtrées pour la série ${seriesId}:`, filteredExtensions);
+    return filteredExtensions;
   };
 
   // Fonction pour mettre à jour la série dans un formulaire scellé
