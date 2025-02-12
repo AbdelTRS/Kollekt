@@ -38,6 +38,12 @@ import {
   SimpleGrid,
   useColorModeValue,
   Card,
+  Stat,
+  StatLabel,
+  StatNumber,
+  NumberInputStepper,
+  NumberIncrementStepper,
+  NumberDecrementStepper,
 } from '@chakra-ui/react';
 import { useState, useEffect, useMemo } from 'react';
 import { supabase } from '../lib/supabase';
@@ -65,6 +71,7 @@ type Item = {
   item_name?: string;
   series_id?: number;
   extension_id?: number;
+  market_value?: number;
 };
 
 type SaleDetails = {
@@ -89,6 +96,7 @@ type GroupedItem = {
   extension_id?: number;
   latest_date: number;
   items: Item[];
+  market_value?: number;
 };
 
 type LabelColor = {
@@ -96,6 +104,14 @@ type LabelColor = {
   category: string;
   value: string;
   color: string;
+};
+
+// Ajouter cette fonction utilitaire après les imports
+const getImageUrl = (type: 'SCELLE' | 'CARTE', image: string | undefined, userId: string | undefined): string | undefined => {
+  if (!image) return undefined;
+  return type === 'CARTE' 
+    ? image 
+    : `https://odryoxqrsdhsdhfueqqs.supabase.co/storage/v1/object/public/sealed-images/${userId}/${image}`;
 };
 
 export const MyCollection = () => {
@@ -261,37 +277,38 @@ export const MyCollection = () => {
 
   const fetchItems = async () => {
     try {
-      if (!session?.user?.id) {
-        console.error('Erreur: Pas de session utilisateur');
-        return;
-      }
-      
+      if (!session?.user?.id) return;
+
       const { data, error } = await supabase
         .from('items')
-        .select('*')
+        .select(`
+          id,
+          type,
+          sub_type,
+          language,
+          card_name,
+          card_image,
+          sealed_image,
+          quantity,
+          purchase_price,
+          card_purchase_price,
+          purchase_date,
+          card_purchase_date,
+          purchase_location,
+          card_purchase_location,
+          is_purchased,
+          item_name,
+          series_id,
+          extension_id,
+          market_value
+        `)
         .eq('user_id', session.user.id);
 
-      if (error) {
-        console.error('Erreur lors du chargement des items:', error);
-        throw error;
-      }
+      if (error) throw error;
 
-      // Construire l'URL complète pour les images scellées
-      const transformedData = data?.map(item => {
-        if (item.type === 'SCELLE' && item.sealed_image) {
-          const baseUrl = 'https://odryoxqrsdhsdhfueqqs.supabase.co/storage/v1/object/public/sealed-images';
-          return {
-            ...item,
-            sealed_image: `${baseUrl}/${session.user.id}/${item.sealed_image}`
-          };
-        }
-        return item;
-      });
-
-      setItems(transformedData || []);
-      setFilteredItems(transformedData || []);
+      setItems(data || []);
+      setFilteredItems(data || []);
     } catch (error: any) {
-      console.error('Erreur lors du chargement des items:', error);
       toast({
         title: 'Erreur lors du chargement des items',
         description: error.message,
@@ -418,7 +435,8 @@ export const MyCollection = () => {
         series_id: firstItem.series_id,
         extension_id: firstItem.extension_id,
         latest_date: latestDate,
-        items: items
+        items: items,
+        market_value: firstItem.market_value,
       };
     });
 
@@ -484,11 +502,16 @@ export const MyCollection = () => {
         // Pour chaque groupe, on ne crée qu'une seule entrée avec la quantité totale
         const firstItem = group.items[0];
         const totalQuantity = group.items.reduce((sum, item) => sum + item.quantity, 0);
+        const imageUrl = getImageUrl(
+          group.type,
+          group.type === 'CARTE' ? group.card_image : group.sealed_image,
+          session?.user?.id
+        );
         selectedItemsDetails[firstItem.id] = {
           quantity: 0,
           maxQuantity: totalQuantity,
           name: group.type === 'CARTE' ? group.card_name || '' : group.item_name || '',
-          image: group.type === 'CARTE' ? group.card_image || '' : group.sealed_image || '',
+          image: imageUrl || '',
           type: group.type,
           sale_price: 0,
           sale_date: '',
@@ -680,6 +703,68 @@ export const MyCollection = () => {
     return label?.color || 'gray';
   };
 
+  const handleMarketValueUpdate = async (itemId: string, value: number) => {
+    try {
+      const { error } = await supabase
+        .from('items')
+        .update({ market_value: value })
+        .eq('id', itemId);
+
+      if (error) throw error;
+
+      // Mettre à jour les données localement
+      const updatedItems = items.map(item => {
+        if (item.id === itemId) {
+          return { ...item, market_value: value };
+        }
+        return item;
+      });
+      setItems(updatedItems);
+      
+      // Mettre à jour les items filtrés
+      setFilteredItems(prevFiltered => 
+        prevFiltered.map(item => {
+          if (item.id === itemId) {
+            return { ...item, market_value: value };
+          }
+          return item;
+        })
+      );
+
+      // Mettre à jour les items groupés
+      setGroupedItems(prevGrouped => 
+        prevGrouped.map(group => {
+          const hasItem = group.items.some(item => item.id === itemId);
+          if (hasItem) {
+            return {
+              ...group,
+              market_value: value,
+              items: group.items.map(item => 
+                item.id === itemId ? { ...item, market_value: value } : item
+              )
+            };
+          }
+          return group;
+        })
+      );
+
+      toast({
+        title: 'Valeur du marché mise à jour',
+        status: 'success',
+        duration: 2000,
+        isClosable: true,
+      });
+    } catch (error: any) {
+      toast({
+        title: 'Erreur lors de la mise à jour',
+        description: error.message,
+        status: 'error',
+        duration: 3000,
+        isClosable: true,
+      });
+    }
+  };
+
   return (
     <Container maxW="container.xl" py={10}>
       <VStack spacing={6} align="stretch">
@@ -742,7 +827,7 @@ export const MyCollection = () => {
         </Flex>
 
         {/* KPIs */}
-        <CollectionStats items={filteredItems} totalSoldItems={totalSoldItems} />
+        <CollectionStats items={filteredItems} />
 
         {/* Filtres */}
         <HStack spacing={4}>
@@ -888,7 +973,7 @@ export const MyCollection = () => {
                   </Td>
                   <Td sx={{ userSelect: 'none' }}>
                     <Image
-                      src={group.type === 'CARTE' ? group.card_image : group.sealed_image}
+                      src={getImageUrl(group.type, group.type === 'CARTE' ? group.card_image : group.sealed_image, session?.user?.id)}
                       alt={group.type === 'CARTE' ? group.card_name : group.item_name}
                       boxSize="50px"
                       objectFit="contain"
@@ -1000,9 +1085,11 @@ export const MyCollection = () => {
                 <HStack spacing={8} align="start">
                   <Box>
                     <Image
-                      src={selectedGroupedItem?.type === 'CARTE' 
-                        ? selectedGroupedItem?.card_image 
-                        : selectedGroupedItem?.sealed_image}
+                      src={getImageUrl(
+                        selectedGroupedItem?.type || 'CARTE',
+                        selectedGroupedItem?.type === 'CARTE' ? selectedGroupedItem?.card_image : selectedGroupedItem?.sealed_image,
+                        session?.user?.id
+                      )}
                       alt="Item"
                       maxH="300px"
                       objectFit="contain"
@@ -1018,6 +1105,76 @@ export const MyCollection = () => {
                       <strong>Prix moyen:</strong> {
                         selectedGroupedItem?.average_price 
                           ? `${selectedGroupedItem.average_price.toFixed(2)}€` 
+                          : '-'
+                      }
+                    </Text>
+                    <HStack spacing={2} width="100%">
+                      {editingItemId === 'market_value' ? (
+                        <FormControl>
+                          <FormLabel>Valeur du marché unitaire</FormLabel>
+                          <HStack>
+                            <NumberInput
+                              value={selectedGroupedItem?.market_value || 0}
+                              onChange={(_, value) => {
+                                if (selectedGroupedItem) {
+                                  setSelectedGroupedItem({
+                                    ...selectedGroupedItem,
+                                    market_value: value
+                                  });
+                                }
+                              }}
+                              min={0}
+                              precision={2}
+                            >
+                              <NumberInputField />
+                              <NumberInputStepper>
+                                <NumberIncrementStepper />
+                                <NumberDecrementStepper />
+                              </NumberInputStepper>
+                            </NumberInput>
+                            <Button
+                              colorScheme="green"
+                              onClick={() => {
+                                if (selectedGroupedItem?.items) {
+                                  selectedGroupedItem.items.forEach(item => {
+                                    handleMarketValueUpdate(item.id, selectedGroupedItem.market_value || 0);
+                                  });
+                                }
+                                setEditingItemId(null);
+                              }}
+                            >
+                              Valider
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              onClick={() => setEditingItemId(null)}
+                            >
+                              Annuler
+                            </Button>
+                          </HStack>
+                        </FormControl>
+                      ) : (
+                        <HStack width="100%" justify="space-between">
+                          <Text fontSize="lg">
+                            <strong>Valeur du marché unitaire:</strong> {
+                              selectedGroupedItem?.market_value
+                                ? `${selectedGroupedItem.market_value.toFixed(2)}€`
+                                : '-'
+                            }
+                          </Text>
+                          <IconButton
+                            aria-label="Modifier la valeur du marché"
+                            icon={<EditIcon />}
+                            size="sm"
+                            onClick={() => setEditingItemId('market_value')}
+                          />
+                        </HStack>
+                      )}
+                    </HStack>
+                    <Text fontSize="lg">
+                      <strong>Valeur totale du marché:</strong> {
+                        selectedGroupedItem?.market_value && selectedGroupedItem?.total_quantity
+                          ? `${(selectedGroupedItem.market_value * selectedGroupedItem.total_quantity).toFixed(2)}€`
                           : '-'
                       }
                     </Text>

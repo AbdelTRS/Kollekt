@@ -69,32 +69,41 @@ export const SalesStats = ({ sales }: SalesStatsProps) => {
     <SimpleGrid columns={{ base: 2, md: 4 }} spacing={4}>
       <Box p={4} borderRadius="lg" bg={bgColor} borderWidth="1px" borderColor={borderColor} shadow="sm">
         <Stat>
-          <StatLabel>Revenu Total</StatLabel>
-          <StatNumber>
-            {totalRevenue.toLocaleString('fr-FR', { style: 'currency', currency: 'EUR' })}
-          </StatNumber>
-          <StatHelpText>Depuis le début</StatHelpText>
-        </Stat>
-      </Box>
-
-      <Box p={4} borderRadius="lg" bg={bgColor} borderWidth="1px" borderColor={borderColor} shadow="sm">
-        <Stat>
-          <StatLabel>Mois en cours</StatLabel>
+          <StatLabel>Chiffre d'affaires (mois en cours)</StatLabel>
           <StatNumber>
             {currentMonthRevenue.toLocaleString('fr-FR', { style: 'currency', currency: 'EUR' })}
           </StatNumber>
           <StatHelpText>
-            Bénéfice: {currentMonthProfit.toLocaleString('fr-FR', { style: 'currency', currency: 'EUR' })}
+            Total: {totalRevenue.toLocaleString('fr-FR', { style: 'currency', currency: 'EUR' })}
           </StatHelpText>
         </Stat>
       </Box>
 
       <Box p={4} borderRadius="lg" bg={bgColor} borderWidth="1px" borderColor={borderColor} shadow="sm">
         <Stat>
-          <StatLabel>Bénéfice Total</StatLabel>
+          <StatLabel>Bénéfice (mois en cours)</StatLabel>
           <StatNumber>
-            {totalProfit.toLocaleString('fr-FR', { style: 'currency', currency: 'EUR' })}
+            {currentMonthProfit.toLocaleString('fr-FR', { style: 'currency', currency: 'EUR' })}
           </StatNumber>
+          <StatHelpText>
+            Total: {totalProfit.toLocaleString('fr-FR', { style: 'currency', currency: 'EUR' })}
+          </StatHelpText>
+        </Stat>
+      </Box>
+
+      <Box p={4} borderRadius="lg" bg={bgColor} borderWidth="1px" borderColor={borderColor} shadow="sm">
+        <Stat>
+          <StatLabel>Rentabilité (mois en cours)</StatLabel>
+          <StatNumber>
+            {currentMonthRevenue > 0
+              ? `${((currentMonthProfit / currentMonthRevenue) * 100).toFixed(1)}%`
+              : '0%'}
+          </StatNumber>
+          <StatHelpText>
+            Total: {totalRevenue > 0
+              ? `${((totalProfit / totalRevenue) * 100).toFixed(1)}%`
+              : '0%'}
+          </StatHelpText>
         </Stat>
       </Box>
 

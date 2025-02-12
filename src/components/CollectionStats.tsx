@@ -15,29 +15,22 @@ type Item = {
   purchase_price?: number;
   card_purchase_price?: number;
   is_purchased?: boolean;
+  market_value?: number;
 };
 
 type CollectionStatsProps = {
   items: Item[];
-  totalSoldItems: number;
 };
 
-export const CollectionStats = ({ items, totalSoldItems = 0 }: CollectionStatsProps) => {
+export const CollectionStats = ({ items }: CollectionStatsProps) => {
   const bgColor = useColorModeValue('white', 'gray.700');
   const borderColor = useColorModeValue('gray.200', 'gray.600');
 
   // Calculer les statistiques
   const totalItems = items.reduce((acc, item) => acc + item.quantity, 0);
   
-  // Ne calculer la valeur que pour les items avec un prix
-  const itemsWithPrice = items.filter(item => {
-    if (item.type === 'SCELLE') {
-      return true; // Les items scellés ont toujours un prix
-    }
-    return item.is_purchased && item.card_purchase_price != null;
-  });
-
-  const totalValue = itemsWithPrice.reduce((acc, item) => {
+  // Calculer la valeur d'achat totale
+  const totalValue = items.reduce((acc, item) => {
     if (item.type === 'SCELLE') {
       return acc + (item.purchase_price || 0) * item.quantity;
     } else {
@@ -45,8 +38,10 @@ export const CollectionStats = ({ items, totalSoldItems = 0 }: CollectionStatsPr
     }
   }, 0);
 
-  const totalItemsWithPrice = itemsWithPrice.reduce((acc, item) => acc + item.quantity, 0);
-  const averagePrice = totalItemsWithPrice > 0 ? totalValue / totalItemsWithPrice : 0;
+  // Calculer la valeur du marché totale
+  const totalMarketValue = items.reduce((acc, item) => {
+    return acc + (item.market_value || 0) * item.quantity;
+  }, 0);
   
   const sealedItems = items.filter(item => item.type === 'SCELLE');
   const cardItems = items.filter(item => item.type === 'CARTE');
@@ -57,9 +52,18 @@ export const CollectionStats = ({ items, totalSoldItems = 0 }: CollectionStatsPr
     <SimpleGrid columns={{ base: 2, md: 4 }} spacing={4}>
       <Box p={4} borderRadius="lg" bg={bgColor} borderWidth="1px" borderColor={borderColor} shadow="sm">
         <Stat>
-          <StatLabel>Valeur Totale</StatLabel>
+          <StatLabel>Valeur d'Achat</StatLabel>
           <StatNumber>
             {totalValue > 0 ? totalValue.toLocaleString('fr-FR', { style: 'currency', currency: 'EUR' }) : '-'}
+          </StatNumber>
+        </Stat>
+      </Box>
+
+      <Box p={4} borderRadius="lg" bg={bgColor} borderWidth="1px" borderColor={borderColor} shadow="sm">
+        <Stat>
+          <StatLabel>Valeur sur le marché</StatLabel>
+          <StatNumber>
+            {totalMarketValue > 0 ? totalMarketValue.toLocaleString('fr-FR', { style: 'currency', currency: 'EUR' }) : '-'}
           </StatNumber>
         </Stat>
       </Box>
@@ -69,14 +73,6 @@ export const CollectionStats = ({ items, totalSoldItems = 0 }: CollectionStatsPr
           <StatLabel>Nombre Total d'Items</StatLabel>
           <StatNumber>{totalItems}</StatNumber>
           <StatHelpText>En stock</StatHelpText>
-        </Stat>
-      </Box>
-
-      <Box p={4} borderRadius="lg" bg={bgColor} borderWidth="1px" borderColor={borderColor} shadow="sm">
-        <Stat>
-          <StatLabel>Items Vendus</StatLabel>
-          <StatNumber>{totalSoldItems}</StatNumber>
-          <StatHelpText>Total historique</StatHelpText>
         </Stat>
       </Box>
 

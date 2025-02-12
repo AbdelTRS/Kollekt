@@ -15,6 +15,7 @@ import {
   Stat,
   StatLabel,
   StatNumber,
+  StatHelpText,
   useColorModeValue,
 } from '@chakra-ui/react';
 import { useState, useEffect } from 'react';
@@ -61,6 +62,7 @@ type ItemData = {
   card_purchase_price?: number;
   purchase_date?: string;
   card_purchase_date?: string;
+  market_value?: number;
 };
 
 type SaleData = {
@@ -83,7 +85,11 @@ export const Dashboard = () => {
   const { session } = useAuth();
   const [timeRange, setTimeRange] = useState<TimeRange>('month');
   const [collectionValue, setCollectionValue] = useState(0);
+  const [totalMarketValue, setTotalMarketValue] = useState(0);
   const [totalProfit, setTotalProfit] = useState(0);
+  const [monthlyProfit, setMonthlyProfit] = useState(0);
+  const [monthlySales, setMonthlySales] = useState(0);
+  const [totalSales, setTotalSales] = useState(0);
   const [lastPurchases, setLastPurchases] = useState<Transaction[]>([]);
   const [lastSales, setLastSales] = useState<Transaction[]>([]);
   const [chartData, setChartData] = useState<ChartData[]>([]);
@@ -105,11 +111,11 @@ export const Dashboard = () => {
 
   const fetchDashboardData = async () => {
     try {
-      // Récupérer la valeur totale de la collection
+      // Récupérer la valeur totale de la collection et la valeur du marché
       const { data: items, error: itemsError } = await supabase
         .from('items')
-        .select('type, quantity, purchase_price, card_purchase_price')
-        .eq('user_id', session?.user?.id) as { data: ItemData[] | null, error: any };
+        .select('type, quantity, purchase_price, card_purchase_price, market_value')
+        .eq('user_id', session?.user?.id);
 
       if (itemsError) throw itemsError;
 
@@ -118,9 +124,14 @@ export const Dashboard = () => {
         return acc + (price || 0) * item.quantity;
       }, 0) || 0;
 
-      setCollectionValue(totalValue);
+      const marketValue = items?.reduce((acc, item) => {
+        return acc + (item.market_value || 0) * item.quantity;
+      }, 0) || 0;
 
-      // Récupérer le bénéfice total des ventes
+      setCollectionValue(totalValue);
+      setTotalMarketValue(marketValue);
+
+      // Récupérer les ventes et calculer les profits
       const { data: sales, error: salesError } = await supabase
         .from('sales')
         .select(`
@@ -131,9 +142,30 @@ export const Dashboard = () => {
             card_purchase_price
           )
         `)
-        .eq('user_id', session?.user?.id) as { data: SaleData[] | null, error: any };
+        .eq('user_id', session?.user?.id);
 
       if (salesError) throw salesError;
+
+      const now = new Date();
+      const currentMonth = now.getMonth();
+      const currentYear = now.getFullYear();
+
+      const monthSales = sales?.filter(sale => {
+        const saleDate = new Date(sale.sale_date);
+        return saleDate.getMonth() === currentMonth && saleDate.getFullYear() === currentYear;
+      }) || [];
+
+      const monthRevenue = monthSales.reduce((acc, sale) => acc + (sale.sale_price * sale.quantity), 0);
+      setMonthlySales(monthRevenue);
+
+      const monthProfit = monthSales.reduce((acc, sale) => {
+        const purchasePrice = sale.items.type === 'CARTE' 
+          ? sale.items.card_purchase_price 
+          : sale.items.purchase_price;
+        if (purchasePrice === undefined) return acc;
+        return acc + ((sale.sale_price - purchasePrice) * sale.quantity);
+      }, 0);
+      setMonthlyProfit(monthProfit);
 
       const profit = sales?.reduce((acc, sale) => {
         const purchasePrice = sale.items.type === 'CARTE' 
@@ -144,6 +176,10 @@ export const Dashboard = () => {
       }, 0) || 0;
 
       setTotalProfit(profit);
+
+      // Calculer le chiffre d'affaires total
+      const totalRevenue = sales?.reduce((acc, sale) => acc + (sale.sale_price * sale.quantity), 0) || 0;
+      setTotalSales(totalRevenue);
 
       // Récupérer les 3 derniers achats
       const { data: recentItems, error: recentItemsError } = await supabase
@@ -163,11 +199,11 @@ export const Dashboard = () => {
         `)
         .eq('user_id', session?.user?.id)
         .order('created_at', { ascending: false })
-        .limit(3) as { data: ItemData[] | null, error: any };
+        .limit(3);
 
       if (recentItemsError) throw recentItemsError;
 
-      const formattedPurchases: Transaction[] = (recentItems || []).map(item => ({
+      const formattedPurchases = (recentItems || []).map(item => ({
         id: item.id,
         date: item.type === 'CARTE' ? item.card_purchase_date || '' : item.purchase_date || '',
         type: item.type,
@@ -201,7 +237,7 @@ export const Dashboard = () => {
 
       if (recentSalesError) throw recentSalesError;
 
-      const formattedSales: Transaction[] = (recentSales || []).map(sale => ({
+      const formattedSales = (recentSales || []).map(sale => ({
         id: sale.id,
         date: sale.sale_date,
         type: sale.items.type,
@@ -364,9 +400,9 @@ export const Dashboard = () => {
           <Card bg={bgCard} borderColor={borderColor} borderWidth="1px">
             <CardBody>
               <Stat>
-                <StatLabel>Bénéfice Total</StatLabel>
+                <StatLabel>Valeur sur le marché</StatLabel>
                 <StatNumber>
-                  {totalProfit.toLocaleString('fr-FR', { style: 'currency', currency: 'EUR' })}
+                  {totalMarketValue.toLocaleString('fr-FR', { style: 'currency', currency: 'EUR' })}
                 </StatNumber>
               </Stat>
             </CardBody>
@@ -375,17 +411,13 @@ export const Dashboard = () => {
           <Card bg={bgCard} borderColor={borderColor} borderWidth="1px">
             <CardBody>
               <Stat>
-                <StatLabel>Ventes du mois</StatLabel>
+                <StatLabel>Chiffre d'affaires (mois en cours)</StatLabel>
                 <StatNumber>
-                  {chartData
-                    .filter(data => {
-                      const date = new Date(data.date);
-                      const now = new Date();
-                      return date.getMonth() === now.getMonth() && date.getFullYear() === now.getFullYear();
-                    })
-                    .reduce((acc, data) => acc + data.sales, 0)
-                    .toLocaleString('fr-FR', { style: 'currency', currency: 'EUR' })}
+                  {monthlySales.toLocaleString('fr-FR', { style: 'currency', currency: 'EUR' })}
                 </StatNumber>
+                <StatHelpText>
+                  Total: {totalSales.toLocaleString('fr-FR', { style: 'currency', currency: 'EUR' })}
+                </StatHelpText>
               </Stat>
             </CardBody>
           </Card>
@@ -393,12 +425,17 @@ export const Dashboard = () => {
           <Card bg={bgCard} borderColor={borderColor} borderWidth="1px">
             <CardBody>
               <Stat>
-                <StatLabel>Rentabilité</StatLabel>
+                <StatLabel>Rentabilité (mois en cours)</StatLabel>
                 <StatNumber>
-                  {totalProfit > 0 && collectionValue > 0
-                    ? `${((totalProfit / collectionValue) * 100).toFixed(1)}%`
+                  {monthlyProfit > 0
+                    ? `${((monthlyProfit / monthlySales) * 100).toFixed(1)}%`
                     : '0%'}
                 </StatNumber>
+                <StatHelpText>
+                  {totalProfit > 0
+                    ? `Global: ${((totalProfit / collectionValue) * 100).toFixed(1)}%`
+                    : 'Global: 0%'}
+                </StatHelpText>
               </Stat>
             </CardBody>
           </Card>
