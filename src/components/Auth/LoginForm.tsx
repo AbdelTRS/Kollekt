@@ -6,7 +6,6 @@ import {
   FormLabel,
   Input,
   VStack,
-  Text,
   useToast,
   useColorModeValue,
 } from '@chakra-ui/react';

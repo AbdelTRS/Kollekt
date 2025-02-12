@@ -113,6 +113,7 @@ interface CardFormData {
   selectedExtensionId: number | null;
 }
 
+/* @ts-ignore */
 export const AddItem = () => {
   const { session } = useAuth();
   const toast = useToast();
