@@ -81,6 +81,7 @@ export const MySales = () => {
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [labelColors, setLabelColors] = useState<LabelColor[]>([]);
+  const [selectedMonth, setSelectedMonth] = useState<string | null>(null);
 
   // États pour les données
   const [isLoading, setIsLoading] = useState(true);
@@ -117,7 +118,7 @@ export const MySales = () => {
   // Appliquer les filtres quand ils changent
   useEffect(() => {
     filterSales();
-  }, [sales, itemType, searchQuery, selectedSeriesId, selectedExtensionId, startDate, endDate, sortField, sortDirection]);
+  }, [sales, itemType, searchQuery, selectedSeriesId, selectedExtensionId, startDate, endDate, sortField, sortDirection, selectedMonth]);
 
   const fetchSales = async () => {
     try {
@@ -218,6 +219,15 @@ export const MySales = () => {
 
   const filterSales = () => {
     let filtered = [...sales];
+
+    // Filtre par mois sélectionné
+    if (selectedMonth) {
+      const [selectedYear, selectedMonthNum] = selectedMonth.split('-').map(Number);
+      filtered = filtered.filter(sale => {
+        const saleDate = new Date(sale.sale_date);
+        return saleDate.getFullYear() === selectedYear && saleDate.getMonth() === selectedMonthNum - 1;
+      });
+    }
 
     // Filtre par type
     if (itemType !== 'ALL') {
@@ -344,7 +354,36 @@ export const MySales = () => {
   return (
     <Container maxW="container.xl" py={10}>
       <VStack spacing={6} align="stretch">
-        <Heading>Mes Ventes</Heading>
+        <HStack justify="space-between" align="center">
+          <Heading>Mes Ventes</Heading>
+          <Box maxWidth="300px" width="100%">
+            <Select
+              value={selectedMonth || 'all'}
+              onChange={(e) => {
+                const value = e.target.value === 'all' ? null : e.target.value;
+                setSelectedMonth(value);
+              }}
+            >
+              <option value="all">Toutes les ventes</option>
+              {Array.from(new Set(sales.map(sale => {
+                const date = new Date(sale.sale_date);
+                return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+              }))).sort().reverse().map(month => {
+                const [year, monthNum] = month.split('-');
+                const date = new Date(parseInt(year), parseInt(monthNum) - 1);
+                const monthName = date.toLocaleDateString('fr-FR', {
+                  month: 'long',
+                  year: 'numeric'
+                });
+                return (
+                  <option key={month} value={month}>
+                    {monthName.charAt(0).toUpperCase() + monthName.slice(1)}
+                  </option>
+                );
+              })}
+            </Select>
+          </Box>
+        </HStack>
 
         {/* KPIs */}
         <SalesStats sales={filteredSales} />
