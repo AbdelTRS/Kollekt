@@ -21,22 +21,37 @@ BEGIN
             sealed_image,
             quantity,
             series_id,
-            extension_id
+            extension_id,
+            language,
+            is_purchased,
+            purchase_price,
+            purchase_date,
+            purchase_location,
+            card_purchase_price,
+            card_purchase_date,
+            card_purchase_location
         )
         SELECT 
             gen_random_uuid(),
             s.user_id,
-            i.type,
-            i.sub_type,
-            i.item_name,
-            i.card_name,
-            i.card_image,
-            i.sealed_image,
+            s.type,
+            s.sub_type,
+            s.item_name,
+            s.card_name,
+            s.card_image,
+            s.sealed_image,
             s.quantity,
-            i.series_id,
-            i.extension_id
+            s.series_id,
+            s.extension_id,
+            s.language,
+            TRUE,
+            s.purchase_price,
+            s.purchase_date,
+            s.purchase_location,
+            s.purchase_price,
+            s.purchase_date,
+            s.purchase_location
         FROM sales s
-        LEFT JOIN items i ON i.id = s.item_id
         WHERE s.id = p_sale_id;
     END IF;
 END;

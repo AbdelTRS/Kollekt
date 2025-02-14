@@ -113,8 +113,26 @@ interface CardFormData {
   selectedExtensionId: number | null;
 }
 
-/* @ts-ignore */
+// Constantes qui peuvent rester en dehors du composant
+const generateId = () => Date.now().toString();
+const defaultCardForm: CardFormData = {
+  id: generateId(),
+  cardName: '',
+  cardNumber: '',
+  cardImage: null,
+  cardImagePreview: '',
+  isPurchased: 'yes',
+  cardPurchasePrice: '',
+  cardPurchaseDate: '',
+  cardPurchaseLocation: '',
+  quantity: '1',
+  selectedSeriesId: null,
+  selectedExtensionId: null,
+};
+
 export const AddItem = () => {
+  // Déplacer l'état isSubmitting à l'intérieur du composant
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const { session } = useAuth();
   const toast = useToast();
   const { isOpen: isGalleryOpen, onOpen: onGalleryOpen, onClose: onGalleryClose } = useDisclosure();
@@ -658,61 +676,58 @@ export const AddItem = () => {
   // Modifier la fonction handleCardSubmit de manière similaire
   const handleCardSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsLoading(true);
+    setIsSubmitting(true);
 
     try {
+      // Validation de base
+      if (!session?.user?.id) {
+        throw new Error('Utilisateur non connecté');
+      }
+
+      // Vérifier que tous les formulaires sont valides
       for (const form of cardForms) {
-        if (!form.cardImage || !form.cardName || !form.selectedSeriesId || !form.selectedExtensionId) {
-          toast({
-            title: 'Erreur',
-            description: 'Veuillez remplir tous les champs obligatoires pour toutes les cartes',
-            status: 'error',
-            duration: 3000,
-            isClosable: true,
-          });
-          setIsLoading(false);
-          return;
+        if (!form.cardName || !form.quantity || !form.selectedSeriesId || !form.selectedExtensionId) {
+          throw new Error('Veuillez remplir tous les champs obligatoires');
         }
 
-        const imageUrl = await uploadImage(form.cardImage);
+        // Pour les cartes achetées, vérifier les champs d'achat
+        if (form.isPurchased === 'yes' && (!form.cardPurchasePrice || !form.cardPurchaseDate || !form.cardPurchaseLocation)) {
+          throw new Error('Veuillez remplir tous les détails d\'achat pour les cartes achetées');
+        }
+      }
 
+      // Traiter chaque formulaire de carte
+      for (const form of cardForms) {
+        let imagePath = form.cardImagePreview;
+
+        // Gérer l'upload d'image si nécessaire
+        if (form.cardImage && !form.cardImagePreview.includes('http')) {
+          imagePath = await uploadImage(form.cardImage);
+        }
+
+        // Préparer les données de la carte
         const cardData = {
-          user_id: session?.user.id,
+          user_id: session.user.id,
           type: 'CARTE' as const,
           language: 'FR' as const,
           card_name: form.cardName,
           card_number: form.cardNumber || null,
-          card_image: imageUrl,
+          card_image: imagePath,
           quantity: parseInt(form.quantity),
-          is_purchased: form.isPurchased === 'no',
+          is_purchased: true,
+          card_purchase_price: parseFloat(form.cardPurchasePrice),
+          card_purchase_date: form.cardPurchaseDate,
+          card_purchase_location: form.cardPurchaseLocation,
           series_id: form.selectedSeriesId,
           extension_id: form.selectedExtensionId
         };
 
-        if (form.isPurchased === 'no') {
-          if (!form.cardPurchasePrice || !form.cardPurchaseDate || !form.cardPurchaseLocation) {
-            toast({
-              title: 'Erreur de validation',
-              description: 'Veuillez remplir tous les champs d\'achat',
-              status: 'error',
-              duration: 3000,
-              isClosable: true,
-            });
-            return;
-          }
-
-          Object.assign(cardData, {
-            card_purchase_price: parseFloat(form.cardPurchasePrice),
-            card_purchase_date: form.cardPurchaseDate,
-            card_purchase_location: form.cardPurchaseLocation
-          });
-        }
-
-        const { error } = await supabase
+        // Insérer la carte dans la base de données
+        const { error: insertError } = await supabase
           .from('items')
           .insert([cardData]);
 
-        if (error) throw error;
+        if (insertError) throw insertError;
       }
 
       toast({
@@ -722,33 +737,20 @@ export const AddItem = () => {
         isClosable: true,
       });
 
-      // Réinitialiser les formulaires
-      setCardForms([{
-        id: '1',
-        cardName: '',
-        cardNumber: '',
-        cardImage: null,
-        cardImagePreview: '',
-        isPurchased: 'yes',
-        cardPurchasePrice: '',
-        cardPurchaseDate: '',
-        cardPurchaseLocation: '',
-        quantity: '1',
-        selectedSeriesId: null,
-        selectedExtensionId: null,
-      }]);
-
+      // Réinitialiser le formulaire
+      setCardForms([{ ...defaultCardForm, id: generateId() }]);
+      
     } catch (error: any) {
-      console.error('Erreur complète:', error);
+      console.error('Erreur détaillée:', error);
       toast({
-        title: 'Erreur lors de l\'ajout',
+        title: 'Erreur lors de l\'ajout des cartes',
         description: error.message,
         status: 'error',
-        duration: 3000,
+        duration: 5000,
         isClosable: true,
       });
     } finally {
-      setIsLoading(false);
+      setIsSubmitting(false);
     }
   };
 
@@ -793,17 +795,21 @@ export const AddItem = () => {
           }>>((acc, item) => {
             const imageKey = item.type === 'SCELLE' ? item.sealed_image : item.card_image;
             
-            // Si l'image n'a pas déjà été ajoutée
-            if (!uniqueImages.has(imageKey)) {
+            // Si l'image n'a pas déjà été ajoutée et qu'elle existe
+            if (imageKey && !uniqueImages.has(imageKey)) {
               uniqueImages.add(imageKey);
-              acc.push({
-                id: item.id,
-                type: item.type as 'SCELLE' | 'CARTE',
-                image_url: item.type === 'SCELLE' 
-                  ? `https://odryoxqrsdhsdhfueqqs.supabase.co/storage/v1/object/public/sealed-images/${session.user.id}/${item.sealed_image}`
-                  : item.card_image || '',
-                file_name: item.type === 'SCELLE' ? item.sealed_image : undefined
-              });
+              const imageUrl = item.type === 'SCELLE' 
+                ? `https://odryoxqrsdhsdhfueqqs.supabase.co/storage/v1/object/public/sealed-images/${session.user.id}/${item.sealed_image}`
+                : item.card_image || '';
+
+              if (imageUrl) {
+                acc.push({
+                  id: item.id,
+                  type: item.type as 'SCELLE' | 'CARTE',
+                  image_url: imageUrl,
+                  file_name: item.type === 'SCELLE' ? item.sealed_image : undefined
+                });
+              }
             }
             return acc;
           }, []);
@@ -821,11 +827,11 @@ export const AddItem = () => {
     if (galleryType === 'SCELLE') {
       updateSealedForm(currentFormId, 'sealedImagePreview', imageUrl);
       if (fileName) {
-        updateSealedForm(currentFormId, 'sealedImage', null);
+        updateSealedForm(currentFormId, 'sealedImage', fileName);
       }
     } else {
       updateCardForm(currentFormId, 'cardImagePreview', imageUrl);
-      updateCardForm(currentFormId, 'cardImage', null);
+      updateCardForm(currentFormId, 'cardImage', imageUrl);
     }
     onGalleryClose();
   };
@@ -846,9 +852,7 @@ export const AddItem = () => {
   // Fonction pour obtenir les extensions filtrées pour un formulaire spécifique
   const getFilteredExtensions = (seriesId: number | null) => {
     if (!seriesId) return [];
-    const filteredExtensions = extensions.filter(extension => extension.series_id === seriesId);
-    console.log(`Extensions filtrées pour la série ${seriesId}:`, filteredExtensions);
-    return filteredExtensions;
+    return extensions.filter(extension => extension.series_id === seriesId);
   };
 
   // Fonction pour mettre à jour la série dans un formulaire scellé
@@ -1293,16 +1297,35 @@ export const AddItem = () => {
                                   </FormControl>
 
                                   <FormControl isRequired>
-                                    <FormLabel fontWeight="bold">Achetée</FormLabel>
-                                    <RadioGroup 
-                                      value={form.isPurchased} 
-                                      onChange={(value) => updateCardForm(form.id, 'isPurchased', value)}
+                                    <FormLabel fontWeight="bold">Prix d'achat</FormLabel>
+                                    <NumberInput 
+                                      value={form.cardPurchasePrice} 
+                                      size="lg"
                                     >
-                                      <Stack direction="row" spacing={8}>
-                                        <Radio size="lg" value="yes">Non</Radio>
-                                        <Radio size="lg" value="no">Oui</Radio>
-                                      </Stack>
-                                    </RadioGroup>
+                                      <NumberInputField
+                                        onChange={(e) => updateCardForm(form.id, 'cardPurchasePrice', e.target.value)}
+                                      />
+                                    </NumberInput>
+                                  </FormControl>
+
+                                  <FormControl isRequired>
+                                    <FormLabel fontWeight="bold">Date d'achat</FormLabel>
+                                    <Input
+                                      size="lg"
+                                      type="date"
+                                      value={form.cardPurchaseDate}
+                                      onChange={(e) => updateCardForm(form.id, 'cardPurchaseDate', e.target.value)}
+                                    />
+                                  </FormControl>
+
+                                  <FormControl isRequired>
+                                    <FormLabel fontWeight="bold">Lieu d'achat</FormLabel>
+                                    <Input
+                                      size="lg"
+                                      value={form.cardPurchaseLocation}
+                                      onChange={(e) => updateCardForm(form.id, 'cardPurchaseLocation', e.target.value)}
+                                      placeholder="Où avez-vous obtenu cette carte ?"
+                                    />
                                   </FormControl>
 
                                   <FormControl isRequired>
@@ -1392,39 +1415,6 @@ export const AddItem = () => {
                                       </ButtonGroup>
                                     </VStack>
                                   </FormControl>
-
-                                  {form.isPurchased === 'no' && (
-                                    <VStack spacing={4} width="100%">
-                                      <FormControl isRequired>
-                                        <FormLabel fontWeight="bold">Prix d'achat</FormLabel>
-                                        <NumberInput value={form.cardPurchasePrice} size="lg">
-                                          <NumberInputField
-                                            onChange={(e) => updateCardForm(form.id, 'cardPurchasePrice', e.target.value)}
-                                          />
-                                        </NumberInput>
-                                      </FormControl>
-
-                                      <FormControl isRequired>
-                                        <FormLabel fontWeight="bold">Date d'achat</FormLabel>
-                                        <Input
-                                          size="lg"
-                                          type="date"
-                                          value={form.cardPurchaseDate}
-                                          onChange={(e) => updateCardForm(form.id, 'cardPurchaseDate', e.target.value)}
-                                        />
-                                      </FormControl>
-
-                                      <FormControl isRequired>
-                                        <FormLabel fontWeight="bold">Lieu d'achat</FormLabel>
-                                        <Input
-                                          size="lg"
-                                          value={form.cardPurchaseLocation}
-                                          onChange={(e) => updateCardForm(form.id, 'cardPurchaseLocation', e.target.value)}
-                                          placeholder="Où avez-vous acheté cette carte ?"
-                                        />
-                                      </FormControl>
-                                    </VStack>
-                                  )}
                                 </VStack>
                               </CardBody>
                             </Card>
@@ -1456,7 +1446,7 @@ export const AddItem = () => {
                       type="submit" 
                       colorScheme="blue"
                       size="lg"
-                      isLoading={isLoading}
+                      isLoading={isSubmitting}
                     >
                       Ajouter {cardForms.length > 1 ? 'les' : 'la'} carte{cardForms.length > 1 ? 's' : ''}
                     </Button>

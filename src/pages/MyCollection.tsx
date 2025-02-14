@@ -45,7 +45,7 @@ import {
   NumberIncrementStepper,
   NumberDecrementStepper,
 } from '@chakra-ui/react';
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { CollectionStats } from '../components/CollectionStats';
@@ -115,11 +115,31 @@ const getImageUrl = (type: 'SCELLE' | 'CARTE', image: string | undefined, userId
 };
 
 export const MyCollection = () => {
+  // 1. Hooks de contexte
   const { session } = useAuth();
   const toast = useToast();
   const { isOpen, onOpen, onClose } = useDisclosure();
 
-  // États pour les filtres
+  // 2. Hooks de thème
+  const bgInput = useColorModeValue('white', 'gray.700');
+  const borderColor = useColorModeValue('gray.200', 'gray.600');
+  const modalBg = useColorModeValue('white', 'gray.800');
+  const textColor = useColorModeValue('gray.800', 'white');
+  const placeholderColor = useColorModeValue('gray.500', 'gray.400');
+  const summaryBg = useColorModeValue('gray.50', 'gray.700');
+  const secondaryTextColor = useColorModeValue('gray.500', 'gray.400');
+  const quantityTextColor = useColorModeValue('gray.500', 'gray.400');
+  const errorTextColor = useColorModeValue('red.500', 'red.300');
+  const successTextColor = useColorModeValue('green.500', 'green.300');
+  const hoverBgColor = useColorModeValue('gray.100', 'gray.600');
+
+  // 3. États principaux
+  const [items, setItems] = useState<Item[]>([]);
+  const [filteredItems, setFilteredItems] = useState<Item[]>([]);
+  const [groupedItems, setGroupedItems] = useState<GroupedItem[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  // 4. États de filtrage
   const [itemType, setItemType] = useState<'ALL' | 'SCELLE' | 'CARTE'>('ALL');
   const [subType, setSubType] = useState('');
   const [language, setLanguage] = useState('');
@@ -130,15 +150,25 @@ export const MyCollection = () => {
   const [selectedSeriesId, setSelectedSeriesId] = useState<number | null>(null);
   const [selectedExtensionId, setSelectedExtensionId] = useState<number | null>(null);
 
-  // États pour les données
-  const [isLoading, setIsLoading] = useState(true);
-  const [items, setItems] = useState<Item[]>([]);
-  const [filteredItems, setFilteredItems] = useState<Item[]>([]);
-  const [groupedItems, setGroupedItems] = useState<GroupedItem[]>([]);
+  // 5. États de sélection
   const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set());
+  const [selectedGroupedItem, setSelectedGroupedItem] = useState<GroupedItem | null>(null);
   const [totalSoldItems, setTotalSoldItems] = useState(0);
+  const [labelColors, setLabelColors] = useState<LabelColor[]>([]);
 
-  // États pour la vente
+  // 6. États modaux et édition
+  const [isDetailsOpen, setIsDetailsOpen] = useState(false);
+  const [editingItemId, setEditingItemId] = useState<string | null>(null);
+  const [deleteQuantity, setDeleteQuantity] = useState<number>(1);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [itemToDelete, setItemToDelete] = useState<Item | null>(null);
+  const [showNewPurchaseForm, setShowNewPurchaseForm] = useState(false);
+
+  // 7. États de tri
+  const [sortField, setSortField] = useState<'date' | 'price' | 'quantity' | null>(null);
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
+
+  // 8. États de formulaire
   const [saleDetails, setSaleDetails] = useState<SaleDetails>({
     sale_date: '',
     sale_location: '',
@@ -146,56 +176,21 @@ export const MyCollection = () => {
     quantity: 1,
   });
 
-  // États pour le regroupement
-  const [selectedGroupedItem, setSelectedGroupedItem] = useState<GroupedItem | null>(null);
-  const [isDetailsOpen, setIsDetailsOpen] = useState(false);
+  const [editingValues, setEditingValues] = useState<{[key: string]: any}>({});
+  const [pendingUpdates, setPendingUpdates] = useState<{[key: string]: any}>({});
 
-  // Ajouter dans le composant MyCollection, après les autres états :
-  const [editingItemId, setEditingItemId] = useState<string | null>(null);
-
-  // Ajouter après les autres états :
-  const [deleteQuantity, setDeleteQuantity] = useState<number>(1);
-  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
-  const [itemToDelete, setItemToDelete] = useState<Item | null>(null);
-
-  // Ajouter après les autres états :
-  const [editingValues, setEditingValues] = useState<{
-    [key: string]: {
-      purchase_date?: string;
-      card_purchase_date?: string;
-      purchase_price?: number;
-      card_purchase_price?: number;
-      quantity?: number;
-      purchase_location?: string;
-      card_purchase_location?: string;
-    };
-  }>({});
-
-  // Modifier la structure de l'état itemSaleDetails
   const [itemSaleDetails, setItemSaleDetails] = useState<{
     [key: string]: {
       quantity: number;
       maxQuantity: number;
       name: string;
       image: string;
-      type: 'SCELLE' | 'CARTE';
       sale_price: number;
       sale_date: string;
       sale_location: string;
     };
   }>({});
 
-  // Ajouter ces états après les autres états
-  const [sortField, setSortField] = useState<'date' | 'price' | 'quantity' | null>(null);
-  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
-
-  const bgInput = useColorModeValue('white', 'gray.700');
-  const borderColor = useColorModeValue('gray.200', 'gray.600');
-  const modalBg = useColorModeValue('white', 'gray.800');
-  const textColor = useColorModeValue('gray.800', 'white');
-
-  // Ajouter avant le return de la Modal
-  const [showNewPurchaseForm, setShowNewPurchaseForm] = useState(false);
   const [newPurchase, setNewPurchase] = useState({
     quantity: 1,
     purchase_price: '',
@@ -203,9 +198,189 @@ export const MyCollection = () => {
     purchase_location: ''
   });
 
-  const [labelColors, setLabelColors] = useState<LabelColor[]>([]);
+  // 9. Fonctions utilitaires
+  const filterItems = useCallback(() => {
+    let filtered = [...items];
 
-  // Charger les items quand la session change
+    if (itemType !== 'ALL') {
+      filtered = filtered.filter(item => item.type === itemType);
+    }
+
+    if (selectedSeriesId) {
+      filtered = filtered.filter(item => item.series_id === selectedSeriesId);
+    }
+
+    if (selectedExtensionId) {
+      filtered = filtered.filter(item => item.extension_id === selectedExtensionId);
+    }
+
+    if (subType && itemType === 'SCELLE') {
+      filtered = filtered.filter(item => item.sub_type === subType);
+    }
+
+    if (language && itemType === 'CARTE') {
+      filtered = filtered.filter(item => item.language === language);
+    }
+
+    if (searchQuery) {
+      const query = searchQuery.toLowerCase();
+      filtered = filtered.filter(item => 
+        (item.type === 'CARTE' && item.card_name?.toLowerCase().includes(query)) ||
+        (item.type === 'SCELLE' && item.item_name?.toLowerCase().includes(query))
+      );
+    }
+
+    setFilteredItems(filtered);
+  }, [items, itemType, subType, language, searchQuery, selectedSeriesId, selectedExtensionId]);
+
+  // Fonction pour obtenir la couleur d'une étiquette
+  const getLabelColor = useCallback((category: string, value: string): string => {
+    const label = labelColors.find(l => l.category === category && l.value === value);
+    return label?.color || 'gray';
+  }, [labelColors]);
+
+  const groupItems = useCallback((items: Item[]): GroupedItem[] => {
+    const groupedMap = new Map<string, Item[]>();
+
+    items.forEach(item => {
+      const key = `${item.type}-${item.series_id}-${item.extension_id}-${item.type === 'CARTE' ? item.card_name : item.item_name}`;
+      if (!groupedMap.has(key)) {
+        groupedMap.set(key, []);
+      }
+      groupedMap.get(key)?.push(item);
+    });
+
+    let grouped = Array.from(groupedMap.entries()).map(([key, items]) => {
+      const firstItem = items[0];
+      const totalQuantity = items.reduce((sum, item) => sum + item.quantity, 0);
+      const totalPrice = items.reduce((sum, item) => {
+        const price = item.type === 'CARTE' ? item.card_purchase_price : item.purchase_price;
+        return sum + (price || 0) * item.quantity;
+      }, 0);
+      const averagePrice = totalPrice / totalQuantity;
+
+      const latestDate = items.reduce((latest, item) => {
+        const itemDate = item.type === 'CARTE' 
+          ? new Date(item.card_purchase_date || '').getTime()
+          : new Date(item.purchase_date || '').getTime();
+        return Math.max(latest, itemDate);
+      }, 0);
+
+      return {
+        id: key,
+        type: firstItem.type,
+        sub_type: firstItem.sub_type,
+        language: firstItem.language,
+        card_name: firstItem.card_name,
+        card_image: firstItem.type === 'CARTE' ? firstItem.card_image : undefined,
+        sealed_image: firstItem.type === 'SCELLE' ? firstItem.sealed_image : undefined,
+        total_quantity: totalQuantity,
+        average_price: averagePrice,
+        item_name: firstItem.item_name,
+        series_id: firstItem.series_id,
+        extension_id: firstItem.extension_id,
+        latest_date: latestDate,
+        items: items,
+        market_value: firstItem.market_value,
+      };
+    });
+
+    // Appliquer le tri
+    if (sortField) {
+      grouped.sort((a, b) => {
+        let comparison = 0;
+        switch (sortField) {
+          case 'date':
+            comparison = a.latest_date - b.latest_date;
+            break;
+          case 'price':
+            comparison = (a.average_price || 0) - (b.average_price || 0);
+            break;
+          case 'quantity':
+            comparison = a.total_quantity - b.total_quantity;
+            break;
+        }
+        return sortDirection === 'asc' ? comparison : -comparison;
+      });
+    }
+
+    return grouped;
+  }, [sortField, sortDirection]);
+
+  const handleOpenSaleModal = useCallback(() => {
+    const selectedItemsDetails: {
+      [key: string]: {
+        quantity: number;
+        maxQuantity: number;
+        name: string;
+        image: string;
+        sale_price: number;
+        sale_date: string;
+        sale_location: string;
+      };
+    } = {};
+
+    selectedItems.forEach(groupId => {
+      const group = groupedItems.find(g => g.id === groupId);
+      if (group) {
+        const firstItem = group.items[0];
+        const totalQuantity = group.items.reduce((sum, item) => sum + item.quantity, 0);
+        
+        // Gestion différente des URLs d'images pour les cartes et les items scellés
+        let imageUrl = '';
+        if (group.type === 'CARTE') {
+          imageUrl = group.card_image || '';
+        } else {
+          imageUrl = group.sealed_image ? 
+            `https://odryoxqrsdhsdhfueqqs.supabase.co/storage/v1/object/public/sealed-images/${session?.user?.id}/${group.sealed_image}` 
+            : '';
+        }
+
+        selectedItemsDetails[firstItem.id] = {
+          quantity: 0,
+          maxQuantity: totalQuantity,
+          name: group.type === 'CARTE' ? group.card_name || '' : group.item_name || '',
+          image: imageUrl,
+          sale_price: 0,
+          sale_date: '',
+          sale_location: ''
+        };
+      }
+    });
+
+    setItemSaleDetails(selectedItemsDetails);
+    onOpen();
+  }, [selectedItems, groupedItems, session?.user?.id, onOpen]);
+
+  const handleSort = useCallback((field: 'date' | 'price' | 'quantity') => {
+    if (sortField === field) {
+      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortField(field);
+      setSortDirection('desc');
+    }
+  }, [sortField, sortDirection]);
+
+  const handleItemSelect = useCallback((id: string) => {
+    const newSelectedItems = new Set(selectedItems);
+    if (selectedItems.has(id)) {
+      newSelectedItems.delete(id);
+    } else {
+      newSelectedItems.add(id);
+    }
+    setSelectedItems(newSelectedItems);
+  }, [selectedItems]);
+
+  const handleSelectAll = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.checked) {
+      const allIds = groupedItems.map(item => item.id);
+      setSelectedItems(new Set(allIds));
+    } else {
+      setSelectedItems(new Set());
+    }
+  }, [groupedItems]);
+
+  // 10. Effects
   useEffect(() => {
     if (session?.user?.id) {
       fetchItems();
@@ -217,7 +392,28 @@ export const MyCollection = () => {
     }
   }, [session?.user?.id]);
 
-  // Charger les séries et extensions
+  useEffect(() => {
+    filterItems();
+  }, [filterItems]);
+
+  useEffect(() => {
+    const grouped = groupItems(filteredItems);
+    setGroupedItems(grouped);
+  }, [filteredItems, sortField, sortDirection]);
+
+  useEffect(() => {
+    if (selectedSeriesId) {
+      const filtered = extensions.filter(extension => extension.series_id === selectedSeriesId);
+      setFilteredExtensions(filtered);
+    } else {
+      setFilteredExtensions(extensions);
+    }
+  }, [selectedSeriesId, extensions]);
+
+  useEffect(() => {
+    loadLabelColors();
+  }, []);
+
   useEffect(() => {
     const loadSeriesAndExtensions = async () => {
       if (session?.user?.id) {
@@ -252,28 +448,7 @@ export const MyCollection = () => {
     };
 
     loadSeriesAndExtensions();
-  }, [session?.user?.id]);
-
-  // Filtrer les extensions quand une série est sélectionnée
-  useEffect(() => {
-    if (selectedSeriesId) {
-      const filtered = extensions.filter(extension => extension.series_id === selectedSeriesId);
-      setFilteredExtensions(filtered);
-    } else {
-      setFilteredExtensions(extensions);
-    }
-  }, [selectedSeriesId, extensions]);
-
-  // Appliquer les filtres quand ils changent
-  useEffect(() => {
-    filterItems();
-  }, [items, itemType, subType, language, searchQuery, selectedSeriesId, selectedExtensionId]);
-
-  // Grouper les items filtrés
-  useEffect(() => {
-    const grouped = groupItems(filteredItems);
-    setGroupedItems(grouped);
-  }, [filteredItems, sortField, sortDirection]);
+  }, [session?.user?.id, toast]);
 
   const fetchItems = async () => {
     try {
@@ -345,246 +520,47 @@ export const MyCollection = () => {
     }
   };
 
-  const filterItems = () => {
-    let filtered = [...items];
+  const handleSaleSubmit = useCallback(async () => {
+    if (!session?.user?.id) return;
 
-    // Filtre par type
-    if (itemType !== 'ALL') {
-      filtered = filtered.filter(item => item.type === itemType);
-    }
-
-    // Filtre par série
-    if (selectedSeriesId) {
-      filtered = filtered.filter(item => item.series_id === selectedSeriesId);
-    }
-
-    // Filtre par extension
-    if (selectedExtensionId) {
-      filtered = filtered.filter(item => item.extension_id === selectedExtensionId);
-    }
-
-    // Filtre par sous-type pour les items scellés
-    if (subType && itemType === 'SCELLE') {
-      filtered = filtered.filter(item => item.sub_type === subType);
-    }
-
-    // Filtre par langue pour les cartes
-    if (language && itemType === 'CARTE') {
-      filtered = filtered.filter(item => item.language === language);
-    }
-
-    // Filtre par recherche
-    if (searchQuery) {
-      const query = searchQuery.toLowerCase();
-      filtered = filtered.filter(item => 
-        (item.type === 'CARTE' && item.card_name?.toLowerCase().includes(query)) ||
-        (item.type === 'SCELLE' && item.item_name?.toLowerCase().includes(query))
-      );
-    }
-
-    setFilteredItems(filtered);
-  };
-
-  const handleSort = (field: 'date' | 'price' | 'quantity') => {
-    if (sortField === field) {
-      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
-    } else {
-      setSortField(field);
-      setSortDirection('desc');
-    }
-  };
-
-  const groupItems = (items: Item[]): GroupedItem[] => {
-    const groupedMap = new Map<string, Item[]>();
-
-    items.forEach(item => {
-      const key = `${item.type}-${item.series_id}-${item.extension_id}-${item.type === 'CARTE' ? item.card_name : item.item_name}`;
-      if (!groupedMap.has(key)) {
-        groupedMap.set(key, []);
-      }
-      groupedMap.get(key)?.push(item);
-    });
-
-    let grouped = Array.from(groupedMap.entries()).map(([key, items]) => {
-      const firstItem = items[0];
-      const totalQuantity = items.reduce((sum, item) => sum + item.quantity, 0);
-      const totalPrice = items.reduce((sum, item) => {
-        const price = item.type === 'CARTE' ? item.card_purchase_price : item.purchase_price;
-        return sum + (price || 0) * item.quantity;
-      }, 0);
-      const averagePrice = totalPrice / totalQuantity;
-
-      const latestDate = items.reduce((latest, item) => {
-        const itemDate = item.type === 'CARTE' 
-          ? new Date(item.card_purchase_date || '').getTime()
-          : new Date(item.purchase_date || '').getTime();
-        return Math.max(latest, itemDate);
-      }, 0);
-
-      return {
-        id: key,
-        type: firstItem.type,
-        sub_type: firstItem.sub_type,
-        language: firstItem.language,
-        card_name: firstItem.card_name,
-        card_image: firstItem.type === 'CARTE' ? firstItem.card_image : undefined,
-        sealed_image: firstItem.type === 'SCELLE' ? firstItem.sealed_image : undefined,
-        total_quantity: totalQuantity,
-        average_price: averagePrice,
-        item_name: firstItem.item_name,
-        series_id: firstItem.series_id,
-        extension_id: firstItem.extension_id,
-        latest_date: latestDate,
-        items: items,
-        market_value: firstItem.market_value,
-      };
-    });
-
-    // Appliquer le tri
-    if (sortField) {
-      grouped.sort((a, b) => {
-        let comparison = 0;
-        switch (sortField) {
-          case 'date':
-            comparison = a.latest_date - b.latest_date;
-            break;
-          case 'price':
-            comparison = (a.average_price || 0) - (b.average_price || 0);
-            break;
-          case 'quantity':
-            comparison = a.total_quantity - b.total_quantity;
-            break;
-        }
-        return sortDirection === 'asc' ? comparison : -comparison;
-      });
-    }
-
-    return grouped;
-  };
-
-  const handleSelectAll = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.checked) {
-      const allIds = groupedItems.map(item => item.id);
-      setSelectedItems(new Set(allIds));
-    } else {
-      setSelectedItems(new Set());
-    }
-  };
-
-  const handleItemSelect = (id: string) => {
-    const newSelectedItems = new Set(selectedItems);
-    if (selectedItems.has(id)) {
-      newSelectedItems.delete(id);
-    } else {
-      newSelectedItems.add(id);
-    }
-    setSelectedItems(newSelectedItems);
-  };
-
-  // Modifier la fonction handleOpenSaleModal
-  const handleOpenSaleModal = () => {
-    const selectedItemsDetails: {
-      [key: string]: {
-        quantity: number;
-        maxQuantity: number;
-        name: string;
-        image: string;
-        type: 'SCELLE' | 'CARTE';
-        sale_price: 0;
-        sale_date: string;
-        sale_location: string;
-      };
-    } = {};
-
-    selectedItems.forEach(groupId => {
-      const group = groupedItems.find(g => g.id === groupId);
-      if (group) {
-        // Pour chaque groupe, on ne crée qu'une seule entrée avec la quantité totale
-        const firstItem = group.items[0];
-        const totalQuantity = group.items.reduce((sum, item) => sum + item.quantity, 0);
-        const imageUrl = getImageUrl(
-          group.type,
-          group.type === 'CARTE' ? group.card_image : group.sealed_image,
-          session?.user?.id
-        );
-        selectedItemsDetails[firstItem.id] = {
-          quantity: 0,
-          maxQuantity: totalQuantity,
-          name: group.type === 'CARTE' ? group.card_name || '' : group.item_name || '',
-          image: imageUrl || '',
-          type: group.type,
-          sale_price: 0,
-          sale_date: '',
-          sale_location: '',
-        };
-      }
-    });
-
-    setItemSaleDetails(selectedItemsDetails);
-    onOpen();
-  };
-
-  // Modifier la fonction handleSaleSubmit
-  const handleSaleSubmit = async () => {
     try {
-      for (const [groupId, details] of Object.entries(itemSaleDetails)) {
-        if (details.quantity > 0) {
-          if (!details.sale_date || !details.sale_location || !details.sale_price) {
-            toast({
-              title: 'Erreur de validation',
-              description: `Veuillez remplir tous les champs pour ${details.name}`,
-              status: 'error',
-              duration: 3000,
-              isClosable: true,
-            });
-            return;
-          }
+      // 1. Validation des entrées
+      const invalidSales = Object.entries(itemSaleDetails).some(
+        ([_, details]) => !details.sale_price || !details.quantity || !details.sale_date || !details.sale_location
+      );
 
-          // Trouver le groupe correspondant
-          const group = groupedItems.find(g => g.items[0].id === groupId);
-          if (!group) continue;
-
-          // Trouver l'item avec la plus grande quantité
-          const itemWithMaxQuantity = group.items.reduce((max, item) => 
-            item.quantity > max.quantity ? item : max
-          , group.items[0]);
-
-          // Créer l'enregistrement de vente
-          const { error: saleError } = await supabase.from('sales').insert([{
-            user_id: session?.user.id,
-            item_id: itemWithMaxQuantity.id,
-            sale_date: details.sale_date,
-            sale_location: details.sale_location,
-            sale_price: details.sale_price,
-            quantity: details.quantity,
-          }]);
-
-          if (saleError) throw saleError;
-
-          const newQuantity = itemWithMaxQuantity.quantity - details.quantity;
-
-          if (newQuantity <= 0) {
-            // Si la nouvelle quantité est 0 ou négative, supprimer l'item
-            const { error: deleteError } = await supabase
-              .from('items')
-              .delete()
-              .eq('id', itemWithMaxQuantity.id);
-
-            if (deleteError) throw deleteError;
-          } else {
-            // Sinon, mettre à jour la quantité
-            const { error: updateError } = await supabase
-              .from('items')
-              .update({ quantity: newQuantity })
-              .eq('id', itemWithMaxQuantity.id);
-
-            if (updateError) throw updateError;
-          }
-        }
+      if (invalidSales) {
+        toast({
+          title: 'Erreur de validation',
+          description: 'Veuillez remplir tous les champs requis pour chaque vente',
+          status: 'error',
+          duration: 3000,
+          isClosable: true,
+        });
+        return;
       }
+
+      // 2. Traiter chaque vente
+      for (const [itemId, details] of Object.entries(itemSaleDetails)) {
+        const { error } = await supabase.rpc('process_sale', {
+          p_item_id: itemId,
+          p_user_id: session.user.id,
+          p_sale_date: details.sale_date,
+          p_sale_location: details.sale_location,
+          p_sale_price: details.sale_price,
+          p_quantity: details.quantity
+        });
+
+        if (error) throw error;
+      }
+
+      // 3. Rafraîchir les données
+      await fetchItems();
+      await fetchSalesStats();
 
       toast({
-        title: 'Vente enregistrée avec succès',
+        title: 'Vente enregistrée',
+        description: 'La vente a été enregistrée avec succès',
         status: 'success',
         duration: 3000,
         isClosable: true,
@@ -593,19 +569,20 @@ export const MyCollection = () => {
       setSelectedItems(new Set());
       setItemSaleDetails({});
       onClose();
-      fetchItems();
+
     } catch (error: any) {
+      console.error('Erreur complète:', error);
       toast({
-        title: 'Erreur lors de l\'enregistrement de la vente',
+        title: 'Erreur lors de l\'enregistrement',
         description: error.message,
         status: 'error',
         duration: 3000,
         isClosable: true,
       });
     }
-  };
+  }, [session?.user?.id, itemSaleDetails, toast, fetchItems, onClose, fetchSalesStats]);
 
-  const handleAddPurchase = async () => {
+  const handleAddPurchase = useCallback(async () => {
     if (!selectedGroupedItem || !session?.user?.id) return;
 
     try {
@@ -676,7 +653,7 @@ export const MyCollection = () => {
         isClosable: true,
       });
     }
-  };
+  }, [selectedGroupedItem, session?.user?.id, newPurchase, fetchItems, toast]);
 
   // Ajouter cette fonction pour charger les couleurs
   const loadLabelColors = async () => {
@@ -692,18 +669,7 @@ export const MyCollection = () => {
     }
   };
 
-  // Ajouter loadLabelColors à useEffect
-  useEffect(() => {
-    loadLabelColors();
-  }, []);
-
-  // Fonction pour obtenir la couleur d'une étiquette
-  const getLabelColor = (category: string, value: string): string => {
-    const label = labelColors.find(l => l.category === category && l.value === value);
-    return label?.color || 'gray';
-  };
-
-  const handleMarketValueUpdate = async (itemId: string, value: number) => {
+  const handleMarketValueUpdate = useCallback(async (itemId: string, value: number) => {
     try {
       const { error } = await supabase
         .from('items')
@@ -763,7 +729,7 @@ export const MyCollection = () => {
         isClosable: true,
       });
     }
-  };
+  }, [items, toast]);
 
   return (
     <Container maxW="container.xl" py={10}>
@@ -963,7 +929,7 @@ export const MyCollection = () => {
                     setSelectedGroupedItem(group);
                     setIsDetailsOpen(true);
                   }}
-                  _hover={{ bg: 'gray.100', cursor: 'pointer' }}
+                  _hover={{ bg: hoverBgColor, cursor: 'pointer' }}
                 >
                   <Td sx={{ userSelect: 'none' }} onClick={(e) => e.stopPropagation()}>
                     <Checkbox
@@ -1032,7 +998,7 @@ export const MyCollection = () => {
           <ModalOverlay />
           <ModalContent maxW="1200px">
             <ModalHeader>
-              <Flex align="center" justify="space-between">
+              <Flex align="center" justify="space-between" pr={8}>
                 <Text fontSize="2xl">
                   {selectedGroupedItem?.type === 'CARTE' 
                     ? selectedGroupedItem?.card_name 
@@ -1210,24 +1176,10 @@ export const MyCollection = () => {
                                     [item.type === 'SCELLE' ? 'purchase_date' : 'card_purchase_date']: newValue
                                   }
                                 }));
-                                try {
-                                  const result = await supabase
-                                    .from('items')
-                                    .update({
-                                      [item.type === 'SCELLE' ? 'purchase_date' : 'card_purchase_date']: newValue
-                                    })
-                                    .eq('id', item.id);
-                                  
-                                  if (result.error) throw result.error;
-                                } catch (error: any) {
-                                  toast({
-                                    title: 'Erreur lors de la mise à jour',
-                                    description: error.message,
-                                    status: 'error',
-                                    duration: 3000,
-                                    isClosable: true,
-                                  });
-                                }
+                                setPendingUpdates(prev => ({
+                                  ...prev,
+                                  [item.type === 'SCELLE' ? 'purchase_date' : 'card_purchase_date']: newValue
+                                }));
                               }}
                             />
                           ) : (
@@ -1253,24 +1205,10 @@ export const MyCollection = () => {
                                     [item.type === 'SCELLE' ? 'purchase_price' : 'card_purchase_price']: value
                                   }
                                 }));
-                                try {
-                                  const result = await supabase
-                                    .from('items')
-                                    .update({
-                                      [item.type === 'SCELLE' ? 'purchase_price' : 'card_purchase_price']: value
-                                    })
-                                    .eq('id', item.id);
-                                  
-                                  if (result.error) throw result.error;
-                                } catch (error: any) {
-                                  toast({
-                                    title: 'Erreur lors de la mise à jour',
-                                    description: error.message,
-                                    status: 'error',
-                                    duration: 3000,
-                                    isClosable: true,
-                                  });
-                                }
+                                setPendingUpdates(prev => ({
+                                  ...prev,
+                                  [item.type === 'SCELLE' ? 'purchase_price' : 'card_purchase_price']: value
+                                }));
                               }}
                             >
                               <NumberInputField />
@@ -1288,32 +1226,18 @@ export const MyCollection = () => {
                               value={(editingValues[item.id]?.quantity) ?? item.quantity}
                               min={1}
                               onChange={async (valueString) => {
-                                const value = parseInt(valueString);
+                                const numericValue = parseInt(valueString);
                                 setEditingValues(prev => ({
                                   ...prev,
                                   [item.id]: {
                                     ...prev[item.id],
-                                    quantity: value
+                                    quantity: numericValue
                                   }
                                 }));
-                                try {
-                                  const result = await supabase
-                                    .from('items')
-                                    .update({
-                                      quantity: value
-                                    })
-                                    .eq('id', item.id);
-                                  
-                                  if (result.error) throw result.error;
-                                } catch (error: any) {
-                                  toast({
-                                    title: 'Erreur lors de la mise à jour',
-                                    description: error.message,
-                                    status: 'error',
-                                    duration: 3000,
-                                    isClosable: true,
-                                  });
-                                }
+                                setPendingUpdates(prev => ({
+                                  ...prev,
+                                  quantity: numericValue
+                                }));
                               }}
                             >
                               <NumberInputField />
@@ -1336,24 +1260,10 @@ export const MyCollection = () => {
                                     [item.type === 'SCELLE' ? 'purchase_location' : 'card_purchase_location']: newValue
                                   }
                                 }));
-                                try {
-                                  const result = await supabase
-                                    .from('items')
-                                    .update({
-                                      [item.type === 'SCELLE' ? 'purchase_location' : 'card_purchase_location']: newValue
-                                    })
-                                    .eq('id', item.id);
-                                  
-                                  if (result.error) throw result.error;
-                                } catch (error: any) {
-                                  toast({
-                                    title: 'Erreur lors de la mise à jour',
-                                    description: error.message,
-                                    status: 'error',
-                                    duration: 3000,
-                                    isClosable: true,
-                                  });
-                                }
+                                setPendingUpdates(prev => ({
+                                  ...prev,
+                                  [item.type === 'SCELLE' ? 'purchase_location' : 'card_purchase_location']: newValue
+                                }));
                               }}
                             />
                           ) : (
@@ -1369,11 +1279,41 @@ export const MyCollection = () => {
                               icon={<EditIcon />}
                               size="md"
                               colorScheme={editingItemId === item.id ? "green" : "gray"}
-                              onClick={() => {
+                              onClick={async () => {
                                 if (editingItemId === item.id) {
+                                  try {
+                                    // Appliquer toutes les modifications en une seule fois
+                                    if (Object.keys(pendingUpdates).length > 0) {
+                                      const { error } = await supabase
+                                        .from('items')
+                                        .update(pendingUpdates)
+                                        .eq('id', item.id);
+                                      
+                                      if (error) throw error;
+                                      
+                                      // Rafraîchir les données
+                                      await fetchItems();
+                                      toast({
+                                        title: 'Modifications enregistrées',
+                                        status: 'success',
+                                        duration: 2000,
+                                        isClosable: true,
+                                      });
+                                    }
+                                  } catch (error: any) {
+                                    toast({
+                                      title: 'Erreur lors de la mise à jour',
+                                      description: error.message,
+                                      status: 'error',
+                                      duration: 3000,
+                                      isClosable: true,
+                                    });
+                                  }
+                                  
+                                  // Réinitialiser l'état
                                   setEditingItemId(null);
                                   setEditingValues({});
-                                  fetchItems();
+                                  setPendingUpdates({});
                                 } else {
                                   setEditingItemId(item.id);
                                   setEditingValues(prev => ({
@@ -1388,6 +1328,7 @@ export const MyCollection = () => {
                                       card_purchase_location: item.card_purchase_location
                                     }
                                   }));
+                                  setPendingUpdates({});
                                 }
                               }}
                             />
@@ -1508,7 +1449,7 @@ export const MyCollection = () => {
                 >
                   <NumberInputField />
                 </NumberInput>
-                <Text fontSize="sm" color="gray.500">
+                <Text fontSize="sm" color={quantityTextColor} mt={1}>
                   Quantité disponible : {itemToDelete?.quantity}
                 </Text>
               </VStack>
@@ -1579,8 +1520,8 @@ export const MyCollection = () => {
             <ModalCloseButton />
             <ModalBody>
               <VStack spacing={6}>
-                <Box width="100%" borderWidth={1} borderRadius="lg" p={4}>
-                  <Text fontSize="lg" fontWeight="bold" mb={4}>Items à vendre</Text>
+                <Box width="100%" borderWidth={1} borderRadius="lg" p={4} borderColor={borderColor}>
+                  <Text fontSize="lg" fontWeight="bold" mb={4} color={textColor}>Items à vendre</Text>
                   <SimpleGrid columns={1} spacing={6}>
                     {Object.entries(itemSaleDetails).map(([itemId, details]) => (
                       <Box
@@ -1589,6 +1530,8 @@ export const MyCollection = () => {
                         borderRadius="lg"
                         p={4}
                         position="relative"
+                        borderColor={borderColor}
+                        bg={bgInput}
                       >
                         <Grid templateColumns="200px 1fr" gap={6}>
                           <VStack>
@@ -1597,14 +1540,15 @@ export const MyCollection = () => {
                               alt={details.name}
                               maxH="150px"
                               objectFit="contain"
+                              fallback={<Box boxSize="150px" bg="gray.100" />}
+                              onError={(e) => {
+                                console.error('Erreur de chargement de l\'image:', details.image);
+                              }}
                             />
-                            <Badge colorScheme={details.type === 'CARTE' ? 'blue' : 'green'}>
-                              {details.type}
-                            </Badge>
                           </VStack>
                           
                           <VStack align="stretch" spacing={4}>
-                            <Text fontWeight="bold" fontSize="lg">
+                            <Text fontWeight="bold" fontSize="lg" color={textColor}>
                               {details.name}
                             </Text>
                             
@@ -1646,57 +1590,74 @@ export const MyCollection = () => {
                                   bg={bgInput}
                                   borderColor={borderColor}
                                   color={textColor}
+                                  _placeholder={{ color: placeholderColor }}
                                 />
                               </FormControl>
 
                               <FormControl isRequired>
                                 <FormLabel color={textColor}>Prix de vente unitaire</FormLabel>
-                                <Input
-                                  type="number"
-                                  value={details.sale_price}
-                                  onChange={(e) => {
+                                <NumberInput
+                                  defaultValue={0}
+                                  onChange={(valueString) => {
+                                    const numericValue = parseFloat(valueString) || 0;
                                     setItemSaleDetails(prev => ({
                                       ...prev,
                                       [itemId]: {
                                         ...prev[itemId],
-                                        sale_price: parseFloat(e.target.value)
+                                        sale_price: numericValue
                                       }
                                     }));
                                   }}
-                                  placeholder="0.00"
-                                  bg={bgInput}
-                                  borderColor={borderColor}
-                                  color={textColor}
-                                />
+                                  min={0}
+                                  precision={2}
+                                >
+                                  <NumberInputField
+                                    bg={bgInput}
+                                    borderColor={borderColor}
+                                    color={textColor}
+                                    _placeholder={{ color: placeholderColor }}
+                                  />
+                                </NumberInput>
                               </FormControl>
 
                               <FormControl isRequired>
                                 <FormLabel color={textColor}>Quantité à vendre</FormLabel>
                                 <NumberInput
-                                  min={0}
+                                  defaultValue={0}
+                                  min={1}
                                   max={details.maxQuantity}
-                                  value={details.quantity}
                                   onChange={(valueString) => {
-                                    const value = parseInt(valueString);
+                                    const numericValue = parseInt(valueString) || 0;
+                                    const validValue = Math.min(Math.max(1, numericValue), details.maxQuantity);
                                     setItemSaleDetails(prev => ({
                                       ...prev,
                                       [itemId]: {
                                         ...prev[itemId],
-                                        quantity: value
+                                        quantity: validValue
                                       }
                                     }));
                                   }}
+                                  keepWithinRange={true}
+                                  clampValueOnBlur={true}
                                 >
-                                  <NumberInputField />
+                                  <NumberInputField
+                                    bg={bgInput}
+                                    borderColor={borderColor}
+                                    color={textColor}
+                                  />
+                                  <NumberInputStepper>
+                                    <NumberIncrementStepper />
+                                    <NumberDecrementStepper />
+                                  </NumberInputStepper>
                                 </NumberInput>
-                                <Text fontSize="sm" color="gray.500" mt={1}>
+                                <Text fontSize="sm" color={quantityTextColor} mt={1}>
                                   Disponible : {details.maxQuantity}
                                 </Text>
                               </FormControl>
                             </SimpleGrid>
 
-                            <Box borderWidth={1} borderRadius="md" p={2} bg="gray.50">
-                              <Text fontWeight="bold">
+                            <Box borderWidth={1} borderRadius="md" p={2} bg={summaryBg} borderColor={borderColor}>
+                              <Text fontWeight="bold" color={textColor}>
                                 Montant total : {(details.quantity * details.sale_price).toFixed(2)}€
                               </Text>
                             </Box>
@@ -1707,15 +1668,15 @@ export const MyCollection = () => {
                   </SimpleGrid>
                 </Box>
 
-                <Box width="100%" borderWidth={1} borderRadius="lg" p={4}>
-                  <Text fontSize="lg" fontWeight="bold" mb={2}>Résumé de la vente</Text>
-                  <Text>
+                <Box width="100%" borderWidth={1} borderRadius="lg" p={4} borderColor={borderColor} bg={bgInput}>
+                  <Text fontSize="lg" fontWeight="bold" mb={2} color={textColor}>Résumé de la vente</Text>
+                  <Text color={textColor}>
                     Total items : {Object.values(itemSaleDetails).reduce((sum, item) => sum + item.quantity, 0)}
                   </Text>
-                  <Text>
+                  <Text color={textColor}>
                     Montant total : {Object.values(itemSaleDetails)
                       .reduce((sum, item) => sum + (item.quantity * item.sale_price), 0)
-                      .toFixed(2)}€
+                        .toFixed(2)}€
                   </Text>
                 </Box>
               </VStack>

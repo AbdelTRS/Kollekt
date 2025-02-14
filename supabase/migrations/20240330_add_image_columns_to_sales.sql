@@ -1,0 +1,17 @@
+-- Ajout des colonnes d'images à la table sales
+ALTER TABLE sales
+ADD COLUMN IF NOT EXISTS card_image TEXT,
+ADD COLUMN IF NOT EXISTS sealed_image TEXT,
+ADD COLUMN IF NOT EXISTS type TEXT,
+ADD COLUMN IF NOT EXISTS card_name TEXT,
+ADD COLUMN IF NOT EXISTS item_name TEXT,
+ADD COLUMN IF NOT EXISTS sub_type TEXT,
+ADD COLUMN IF NOT EXISTS language TEXT,
+ADD COLUMN IF NOT EXISTS series_id INTEGER,
+ADD COLUMN IF NOT EXISTS extension_id INTEGER,
+ADD COLUMN IF NOT EXISTS purchase_price DECIMAL(10,2),
+ADD COLUMN IF NOT EXISTS purchase_date DATE,
+ADD COLUMN IF NOT EXISTS purchase_location TEXT,
+ADD COLUMN IF NOT EXISTS card_purchase_price DECIMAL(10,2),
+ADD COLUMN IF NOT EXISTS card_purchase_date DATE,
+ADD COLUMN IF NOT EXISTS card_purchase_location TEXT; 

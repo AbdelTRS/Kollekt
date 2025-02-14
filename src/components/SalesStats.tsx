@@ -34,8 +34,20 @@ export const SalesStats = ({ sales }: SalesStatsProps) => {
   );
 
   const totalProfit = sales.reduce((acc, sale) => {
-    const purchasePrice = sale.type === 'CARTE' ? sale.card_purchase_price : sale.purchase_price;
-    if (purchasePrice === undefined) return acc;
+    // Pour les cartes non achetées, on considère le prix d'achat comme 0€
+    let purchasePrice = 0;
+    
+    if (sale.type === 'CARTE') {
+      // Si la carte a été achetée, on utilise son prix d'achat
+      if (sale.card_purchase_price !== undefined) {
+        purchasePrice = sale.card_purchase_price;
+      }
+      // Si la carte n'a pas été achetée, le prix d'achat reste à 0€
+    } else {
+      // Pour les items scellés, on utilise toujours le prix d'achat
+      purchasePrice = sale.purchase_price || 0;
+    }
+
     return acc + ((sale.sale_price - purchasePrice) * sale.quantity);
   }, 0);
 

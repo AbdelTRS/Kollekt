@@ -151,8 +151,8 @@ export const MySales = () => {
         type: sale.items.type,
         item_name: sale.items.item_name,
         card_name: sale.items.card_name,
-        card_image: sale.items.card_image,
-        sealed_image: sale.items.sealed_image,
+        card_image: sale.items.type === 'CARTE' ? sale.items.card_image : null,
+        sealed_image: sale.items.type === 'SCELLE' ? sale.items.sealed_image : null,
         series_id: sale.items.series_id,
         extension_id: sale.items.extension_id,
         purchase_price: sale.items.purchase_price,
@@ -514,12 +514,18 @@ export const MySales = () => {
                           ? sale.card_image 
                           : sale.sealed_image 
                             ? `https://odryoxqrsdhsdhfueqqs.supabase.co/storage/v1/object/public/sealed-images/${session?.user?.id}/${sale.sealed_image}`
-                            : undefined
-                        }
+                            : ''}
                         alt={sale.type === 'CARTE' ? sale.card_name : sale.item_name}
-                        boxSize="50px"
+                        maxH="100px"
                         objectFit="contain"
-                        fallback={<Box boxSize="50px" bg="gray.100" />}
+                        fallback={<Box boxSize="100px" bg="gray.100" />}
+                        onError={(e) => {
+                          console.error('Erreur de chargement de l\'image:', 
+                            sale.type === 'CARTE' 
+                              ? sale.card_image 
+                              : `https://odryoxqrsdhsdhfueqqs.supabase.co/storage/v1/object/public/sealed-images/${session?.user?.id}/${sale.sealed_image}`
+                          );
+                        }}
                       />
                     </Td>
                     <Td>
