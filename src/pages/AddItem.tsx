@@ -589,6 +589,18 @@ export const AddItem = () => {
     }
   };
 
+  // Fonction pour valider et formater une date
+  const formatDateForDB = (dateString: string | undefined): string | null => {
+    if (!dateString) return null;
+    
+    // Vérifier si la date est valide
+    const date = new Date(dateString);
+    if (isNaN(date.getTime())) return null;
+    
+    // Formater la date en YYYY-MM-DD
+    return date.toISOString().split('T')[0];
+  };
+
   // Modifier la fonction handleSealedSubmit
   const handleSealedSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -606,6 +618,37 @@ export const AddItem = () => {
           });
           setIsLoading(false);
           return;
+        }
+
+        // Valider et formater la date d'achat
+        const formattedPurchaseDate = formatDateForDB(form.purchaseDate);
+        if (!formattedPurchaseDate) {
+          toast({
+            title: "Erreur",
+            description: "La date d'achat n'est pas valide",
+            status: "error",
+            duration: 3000,
+            isClosable: true,
+          });
+          setIsLoading(false);
+          return;
+        }
+
+        // Valider et formater la date de réception prévue si c'est une précommande
+        let formattedExpectedDate: string | null = null;
+        if (form.isPreorder) {
+          formattedExpectedDate = formatDateForDB(form.expectedDate);
+          if (!formattedExpectedDate) {
+            toast({
+              title: "Erreur",
+              description: "La date de réception prévue n'est pas valide",
+              status: "error",
+              duration: 3000,
+              isClosable: true,
+            });
+            setIsLoading(false);
+            return;
+          }
         }
 
         let fileName = null;
@@ -634,14 +677,14 @@ export const AddItem = () => {
           sub_type: form.sealedType,
           item_name: form.itemName,
           purchase_price: parseFloat(form.purchasePrice),
-          purchase_date: form.purchaseDate,
+          purchase_date: formattedPurchaseDate,
           purchase_location: form.purchaseLocation,
           quantity: parseInt(form.quantity),
           series_id: form.selectedSeriesId,
           extension_id: form.selectedExtensionId,
           sealed_image: fileName,
           is_preorder: form.isPreorder,
-          expected_date: form.expectedDate
+          expected_date: formattedExpectedDate
         }]);
 
         if (error) throw error;

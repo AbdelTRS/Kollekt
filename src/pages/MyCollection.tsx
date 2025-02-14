@@ -546,13 +546,24 @@ export const MyCollection = () => {
 
       // 2. Traiter chaque vente
       for (const [itemId, details] of Object.entries(itemSaleDetails)) {
+        // Vérification et validation de la date
+        if (!details.sale_date) {
+          throw new Error('La date de vente est requise');
+        }
+
+        // Vérifier si la date est valide
+        const dateValue = details.sale_date;
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(dateValue)) {
+          throw new Error('Format de date invalide. Utilisez le format YYYY-MM-DD');
+        }
+
         const { error } = await supabase.rpc('process_sale', {
           p_item_id: itemId,
           p_user_id: session.user.id,
-          p_sale_date: details.sale_date,
+          p_sale_date: dateValue,
           p_sale_location: details.sale_location,
-          p_sale_price: details.sale_price,
-          p_quantity: details.quantity
+          p_sale_price: parseFloat(details.sale_price.toString()),
+          p_quantity: parseInt(details.quantity.toString())
         });
 
         if (error) throw error;
