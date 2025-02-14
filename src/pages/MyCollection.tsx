@@ -44,13 +44,14 @@ import {
   NumberInputStepper,
   NumberIncrementStepper,
   NumberDecrementStepper,
+  Tooltip,
 } from '@chakra-ui/react';
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { CollectionStats } from '../components/CollectionStats';
 import { Series, Extension } from '../types/pokemon';
-import { EditIcon, DeleteIcon, AddIcon } from '@chakra-ui/icons';
+import { EditIcon, DeleteIcon, AddIcon, ExternalLinkIcon } from '@chakra-ui/icons';
 
 type Item = {
   id: string;
@@ -740,8 +741,61 @@ export const MyCollection = () => {
         <VStack spacing={6} align="stretch">
           <HStack justify="space-between" align="center" bg={colorMode === 'dark' ? 'gray.700' : 'white'} p={4} borderRadius="lg" shadow="sm">
             <Heading size="lg" color={colorMode === 'dark' ? 'white' : 'gray.800'}>Ma Collection</Heading>
-            <HStack spacing={4}>
+            <HStack spacing={2}>
+              <Tooltip label="Supprimer la sélection" hasArrow>
+                <IconButton
+                  aria-label="Supprimer la sélection"
+                  icon={<DeleteIcon />}
+                  colorScheme="red"
+                  isDisabled={selectedItems.size === 0}
+                  onClick={async () => {
+                    const isConfirmed = window.confirm(`Êtes-vous sûr de vouloir supprimer ${selectedItems.size} item${selectedItems.size > 1 ? 's' : ''} ?`);
+                    if (isConfirmed) {
+                      try {
+                        const selectedItemsArray = Array.from(selectedItems);
+                        const itemsToDelete = selectedItemsArray.flatMap(id => {
+                          const groupedItem = groupedItems.find(item => item.id === id);
+                          return groupedItem ? groupedItem.items.map(item => item.id) : [];
+                        });
+
+                        const { error } = await supabase
+                          .from('items')
+                          .delete()
+                          .in('id', itemsToDelete);
+
+                        if (error) throw error;
+
+                        toast({
+                          title: 'Suppression réussie',
+                          description: `${selectedItems.size} item${selectedItems.size > 1 ? 's' : ''} supprimé${selectedItems.size > 1 ? 's' : ''}`,
+                          status: 'success',
+                          duration: 3000,
+                          isClosable: true,
+                        });
+
+                        setSelectedItems(new Set());
+                        fetchItems();
+                      } catch (error: any) {
+                        toast({
+                          title: 'Erreur lors de la suppression',
+                          description: error.message,
+                          status: 'error',
+                          duration: 3000,
+                          isClosable: true,
+                        });
+                      }
+                    }
+                  }}
+                  display={{ base: 'flex', md: 'none' }}
+                  _hover={{
+                    transform: 'translateY(-2px)',
+                    boxShadow: 'md'
+                  }}
+                  transition="all 0.2s"
+                />
+              </Tooltip>
               <Button
+                leftIcon={<DeleteIcon />}
                 colorScheme="red"
                 isDisabled={selectedItems.size === 0}
                 onClick={async () => {
@@ -782,7 +836,7 @@ export const MyCollection = () => {
                     }
                   }
                 }}
-                size="md"
+                display={{ base: 'none', md: 'flex' }}
                 _hover={{
                   transform: 'translateY(-2px)',
                   boxShadow: 'md'
@@ -791,11 +845,28 @@ export const MyCollection = () => {
               >
                 Supprimer la sélection
               </Button>
+
+              <Tooltip label="Marquer comme vendu" hasArrow>
+                <IconButton
+                  aria-label="Marquer comme vendu"
+                  icon={<ExternalLinkIcon />}
+                  colorScheme="green"
+                  isDisabled={selectedItems.size === 0}
+                  onClick={handleOpenSaleModal}
+                  display={{ base: 'flex', md: 'none' }}
+                  _hover={{
+                    transform: 'translateY(-2px)',
+                    boxShadow: 'md'
+                  }}
+                  transition="all 0.2s"
+                />
+              </Tooltip>
               <Button
+                leftIcon={<ExternalLinkIcon />}
                 colorScheme="green"
                 isDisabled={selectedItems.size === 0}
                 onClick={handleOpenSaleModal}
-                size="md"
+                display={{ base: 'none', md: 'flex' }}
                 _hover={{
                   transform: 'translateY(-2px)',
                   boxShadow: 'md'

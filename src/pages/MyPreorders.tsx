@@ -45,6 +45,7 @@ import {
   StatLabel,
   StatNumber,
   StatHelpText,
+  Tooltip,
 } from '@chakra-ui/react';
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
@@ -733,15 +734,41 @@ export const MyPreorders = () => {
           <Box bg={bgCard} borderRadius="lg" shadow="sm" p={4}>
             <Flex align="center" mb={4}>
               <ButtonGroup spacing={4}>
+                <Tooltip label="Ajouter" hasArrow>
+                  <IconButton
+                    aria-label="Ajouter"
+                    icon={<AddIcon />}
+                    colorScheme="blue"
+                    onClick={onAddOpen}
+                    size="sm"
+                    _hover={{ transform: 'translateY(-2px)', shadow: 'md' }}
+                    display={{ base: 'flex', md: 'none' }}
+                  />
+                </Tooltip>
                 <Button
                   leftIcon={<AddIcon />}
                   colorScheme="blue"
                   onClick={onAddOpen}
                   size="sm"
                   _hover={{ transform: 'translateY(-2px)', shadow: 'md' }}
+                  display={{ base: 'none', md: 'flex' }}
                 >
                   Ajouter
                 </Button>
+
+                <Tooltip label="Supprimer" hasArrow>
+                  <IconButton
+                    aria-label="Supprimer"
+                    icon={<DeleteIcon />}
+                    colorScheme="red"
+                    variant="outline"
+                    isDisabled={selectedItems.size === 0}
+                    onClick={onDeleteOpen}
+                    size="sm"
+                    _hover={{ transform: 'translateY(-2px)', shadow: 'md' }}
+                    display={{ base: 'flex', md: 'none' }}
+                  />
+                </Tooltip>
                 <Button
                   leftIcon={<DeleteIcon />}
                   colorScheme="red"
@@ -750,9 +777,24 @@ export const MyPreorders = () => {
                   onClick={onDeleteOpen}
                   size="sm"
                   _hover={{ transform: 'translateY(-2px)', shadow: 'md' }}
+                  display={{ base: 'none', md: 'flex' }}
                 >
                   Supprimer
                 </Button>
+
+                <Tooltip label="Marquer comme reçu" hasArrow>
+                  <IconButton
+                    aria-label="Marquer comme reçu"
+                    icon={<CheckIcon />}
+                    colorScheme="green"
+                    isDisabled={selectedItems.size === 0}
+                    onClick={handleMarkAsReceived}
+                    isLoading={isLoading}
+                    size="sm"
+                    _hover={{ transform: 'translateY(-2px)', shadow: 'md' }}
+                    display={{ base: 'flex', md: 'none' }}
+                  />
+                </Tooltip>
                 <Button
                   leftIcon={<CheckIcon />}
                   colorScheme="green"
@@ -761,6 +803,7 @@ export const MyPreorders = () => {
                   isLoading={isLoading}
                   size="sm"
                   _hover={{ transform: 'translateY(-2px)', shadow: 'md' }}
+                  display={{ base: 'none', md: 'flex' }}
                 >
                   Marquer comme reçu
                 </Button>

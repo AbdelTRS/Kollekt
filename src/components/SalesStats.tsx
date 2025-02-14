@@ -6,7 +6,15 @@ import {
   StatNumber,
   StatHelpText,
   useColorModeValue,
+  Text,
+  Flex,
 } from '@chakra-ui/react';
+import { 
+  FaChartLine, 
+  FaMoneyBillWave, 
+  FaPercentage, 
+  FaBoxes 
+} from 'react-icons/fa';
 
 type Sale = {
   id: string;
@@ -61,98 +69,101 @@ export const SalesStats = ({ sales }: SalesStatsProps) => {
   const totalSealed = totalSealedSales.reduce((acc, sale) => acc + sale.quantity, 0);
   const totalCards = totalCardSales.reduce((acc, sale) => acc + sale.quantity, 0);
 
-  return (
-    <SimpleGrid columns={{ base: 2, md: 4 }} spacing={4}>
-      <Box 
-        p={4} 
-        borderRadius="lg" 
-        bg={bgColor} 
-        borderWidth="1px" 
-        borderColor={borderColor} 
-        boxShadow="sm"
-        transition="all 0.2s"
-        _hover={{ 
-          boxShadow: 'md', 
-          transform: 'translateY(-2px)',
-          borderColor: 'blue.400'
-        }}
-      >
-        <Stat>
-          <StatLabel color={labelColor}>Chiffre d'affaires</StatLabel>
-          <StatNumber color={valueColor1} fontSize="2xl">
-            {totalRevenue.toLocaleString('fr-FR', { style: 'currency', currency: 'EUR' })}
-          </StatNumber>
-        </Stat>
-      </Box>
-
-      <Box 
-        p={4} 
-        borderRadius="lg" 
-        bg={bgColor} 
-        borderWidth="1px" 
-        borderColor={borderColor} 
-        boxShadow="sm"
-        transition="all 0.2s"
-        _hover={{ 
-          boxShadow: 'md', 
-          transform: 'translateY(-2px)',
-          borderColor: 'blue.400'
-        }}
-      >
-        <Stat>
-          <StatLabel color={labelColor}>Bénéfice</StatLabel>
-          <StatNumber color={valueColor2} fontSize="2xl">
-            {totalProfit.toLocaleString('fr-FR', { style: 'currency', currency: 'EUR' })}
-          </StatNumber>
-        </Stat>
-      </Box>
-
-      <Box 
-        p={4} 
-        borderRadius="lg" 
-        bg={bgColor} 
-        borderWidth="1px" 
-        borderColor={borderColor} 
-        boxShadow="sm"
-        transition="all 0.2s"
-        _hover={{ 
-          boxShadow: 'md', 
-          transform: 'translateY(-2px)',
-          borderColor: 'blue.400'
-        }}
-      >
-        <Stat>
-          <StatLabel color={labelColor}>Rentabilité</StatLabel>
-          <StatNumber color={valueColor3} fontSize="2xl">
-            {totalRevenue > 0
-              ? `${((totalProfit / totalRevenue) * 100).toFixed(1)}%`
-              : '0%'}
-          </StatNumber>
-        </Stat>
-      </Box>
-
-      <Box 
-        p={4} 
-        borderRadius="lg" 
-        bg={bgColor} 
-        borderWidth="1px" 
-        borderColor={borderColor} 
-        boxShadow="sm"
-        transition="all 0.2s"
-        _hover={{ 
-          boxShadow: 'md', 
-          transform: 'translateY(-2px)',
-          borderColor: 'blue.400'
-        }}
-      >
-        <Stat>
-          <StatLabel color={labelColor}>Items Vendus</StatLabel>
-          <StatNumber color={valueColor4} fontSize="2xl">{totalSales}</StatNumber>
-          <StatHelpText color={helpTextColor}>
-            <Box as="span" color="blue.300">Scellés: {totalSealed}</Box> | <Box as="span" color="purple.300">Cartes: {totalCards}</Box>
+  const StatBox = ({ 
+    label, 
+    value, 
+    helpText, 
+    icon, 
+    valueColor 
+  }: { 
+    label: string; 
+    value: string | number; 
+    helpText?: React.ReactNode; 
+    icon: React.ReactElement; 
+    valueColor: string; 
+  }) => (
+    <Box 
+      p={4} 
+      borderRadius="lg" 
+      bg={bgColor} 
+      borderWidth="1px" 
+      borderColor={borderColor} 
+      boxShadow="sm"
+      transition="all 0.2s"
+      _hover={{ 
+        boxShadow: 'md', 
+        transform: 'translateY(-2px)',
+        borderColor: 'blue.400'
+      }}
+    >
+      <Stat>
+        <Flex alignItems="center" mb={2}>
+          <Box color={valueColor} mr={2}>
+            {icon}
+          </Box>
+          <StatLabel color={labelColor} fontSize={{ base: 'sm', md: 'md' }}>
+            {label}
+          </StatLabel>
+        </Flex>
+        <StatNumber 
+          color={valueColor} 
+          fontSize={{ base: 'xl', md: '2xl' }}
+          wordBreak="break-word"
+        >
+          {value}
+        </StatNumber>
+        {helpText && (
+          <StatHelpText 
+            color={helpTextColor}
+            fontSize={{ base: 'xs', md: 'sm' }}
+          >
+            {helpText}
           </StatHelpText>
-        </Stat>
-      </Box>
+        )}
+      </Stat>
+    </Box>
+  );
+
+  return (
+    <SimpleGrid 
+      columns={{ base: 1, sm: 2, md: 4 }} 
+      spacing={{ base: 3, md: 4 }}
+      mx={{ base: -2, md: 0 }}
+    >
+      <StatBox
+        label="Chiffre d'affaires"
+        value={totalRevenue.toLocaleString('fr-FR', { style: 'currency', currency: 'EUR' })}
+        icon={<FaChartLine size="1.2em" />}
+        valueColor={valueColor1}
+      />
+
+      <StatBox
+        label="Bénéfice"
+        value={totalProfit.toLocaleString('fr-FR', { style: 'currency', currency: 'EUR' })}
+        icon={<FaMoneyBillWave size="1.2em" />}
+        valueColor={valueColor2}
+      />
+
+      <StatBox
+        label="Rentabilité"
+        value={totalRevenue > 0 ? `${((totalProfit / totalRevenue) * 100).toFixed(1)}%` : '0%'}
+        icon={<FaPercentage size="1.2em" />}
+        valueColor={valueColor3}
+      />
+
+      <StatBox
+        label="Items Vendus"
+        value={totalSales}
+        helpText={
+          <Flex justifyContent="space-between" fontSize={{ base: 'xs', md: 'sm' }}>
+            <Box as="span" color="blue.300">Scellés: {totalSealed}</Box>
+            <Box as="span" mx={1}>|</Box>
+            <Box as="span" color="purple.300">Cartes: {totalCards}</Box>
+          </Flex>
+        }
+        icon={<FaBoxes size="1.2em" />}
+        valueColor={valueColor4}
+      />
     </SimpleGrid>
   );
 }; 
