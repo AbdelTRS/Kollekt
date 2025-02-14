@@ -30,6 +30,7 @@ import {
   UnorderedList,
   ListItem,
   SimpleGrid,
+  useColorModeValue,
 } from '@chakra-ui/react';
 import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
@@ -69,6 +70,7 @@ type LabelColor = {
 export const MySales = () => {
   const { session } = useAuth();
   const toast = useToast();
+  const colorMode = useColorModeValue('light', 'dark');
 
   // États pour les filtres
   const [itemType, setItemType] = useState<'ALL' | 'SCELLE' | 'CARTE'>('ALL');
@@ -352,262 +354,313 @@ export const MySales = () => {
   };
 
   return (
-    <Container maxW="container.xl" py={10}>
-      <VStack spacing={6} align="stretch">
-        <HStack justify="space-between" align="center">
-          <Heading>Mes Ventes</Heading>
-          <Box maxWidth="300px" width="100%">
-            <Select
-              value={selectedMonth || 'all'}
-              onChange={(e) => {
-                const value = e.target.value === 'all' ? null : e.target.value;
-                setSelectedMonth(value);
-              }}
-            >
-              <option value="all">Toutes les ventes</option>
-              {Array.from(new Set(sales.map(sale => {
-                const date = new Date(sale.sale_date);
-                return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
-              }))).sort().reverse().map(month => {
-                const [year, monthNum] = month.split('-');
-                const date = new Date(parseInt(year), parseInt(monthNum) - 1);
-                const monthName = date.toLocaleDateString('fr-FR', {
-                  month: 'long',
-                  year: 'numeric'
-                });
-                return (
-                  <option key={month} value={month}>
-                    {monthName.charAt(0).toUpperCase() + monthName.slice(1)}
+    <Box bg={colorMode === 'dark' ? 'gray.800' : 'gray.50'} minH="100vh">
+      <Container maxW="container.xl" py={10}>
+        <VStack spacing={6} align="stretch">
+          <HStack justify="space-between" align="center" bg={colorMode === 'dark' ? 'gray.700' : 'white'} p={4} borderRadius="lg" shadow="sm">
+            <Heading size="lg" color={colorMode === 'dark' ? 'white' : 'gray.800'}>Mes Ventes</Heading>
+            <Box maxWidth="300px" width="100%">
+              <Select
+                value={selectedMonth || 'all'}
+                onChange={(e) => {
+                  const value = e.target.value === 'all' ? null : e.target.value;
+                  setSelectedMonth(value);
+                }}
+                bg={colorMode === 'dark' ? 'gray.700' : 'white'}
+                borderColor={colorMode === 'dark' ? 'gray.600' : 'gray.200'}
+                _hover={{ borderColor: 'blue.400' }}
+              >
+                <option value="all">Toutes les ventes</option>
+                {Array.from(new Set(sales.map(sale => {
+                  const date = new Date(sale.sale_date);
+                  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+                }))).sort().reverse().map(month => {
+                  const [year, monthNum] = month.split('-');
+                  const date = new Date(parseInt(year), parseInt(monthNum) - 1);
+                  const monthName = date.toLocaleDateString('fr-FR', {
+                    month: 'long',
+                    year: 'numeric'
+                  });
+                  return (
+                    <option key={month} value={month}>
+                      {monthName.charAt(0).toUpperCase() + monthName.slice(1)}
+                    </option>
+                  );
+                })}
+              </Select>
+            </Box>
+          </HStack>
+
+          {/* KPIs */}
+          <SalesStats sales={filteredSales} />
+
+          {/* Filtres */}
+          <VStack spacing={4} width="100%">
+            {/* Première ligne de filtres */}
+            <SimpleGrid columns={{ base: 1, md: 2, lg: 4 }} spacing={4} width="100%">
+              <Select
+                value={itemType}
+                onChange={(e) => setItemType(e.target.value as 'ALL' | 'SCELLE' | 'CARTE')}
+                bg={colorMode === 'dark' ? 'gray.700' : 'white'}
+                borderColor={colorMode === 'dark' ? 'gray.600' : 'gray.200'}
+                _hover={{ borderColor: 'blue.400' }}
+              >
+                <option value="ALL">Tous les types</option>
+                <option value="SCELLE">Scellé</option>
+                <option value="CARTE">Carte</option>
+              </Select>
+
+              <Select
+                value={selectedSeriesId?.toString() || ''}
+                onChange={(e) => {
+                  const value = e.target.value ? parseInt(e.target.value) : null;
+                  setSelectedSeriesId(value);
+                  setSelectedExtensionId(null);
+                }}
+                placeholder="Toutes les séries"
+                bg={colorMode === 'dark' ? 'gray.700' : 'white'}
+                borderColor={colorMode === 'dark' ? 'gray.600' : 'gray.200'}
+                _hover={{ borderColor: 'blue.400' }}
+              >
+                {series.map(serie => (
+                  <option key={serie.id} value={serie.id}>
+                    {serie.name} ({serie.code})
                   </option>
-                );
-              })}
-            </Select>
+                ))}
+              </Select>
+
+              <Select
+                value={selectedExtensionId?.toString() || ''}
+                onChange={(e) => setSelectedExtensionId(e.target.value ? parseInt(e.target.value) : null)}
+                placeholder="Toutes les extensions"
+                isDisabled={!selectedSeriesId}
+                bg={colorMode === 'dark' ? 'gray.700' : 'white'}
+                borderColor={colorMode === 'dark' ? 'gray.600' : 'gray.200'}
+                _hover={{ borderColor: 'blue.400' }}
+              >
+                {filteredExtensions.map(extension => (
+                  <option key={extension.id} value={extension.id}>
+                    {extension.name} ({extension.code})
+                  </option>
+                ))}
+              </Select>
+
+              <Input
+                placeholder="Rechercher..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                bg={colorMode === 'dark' ? 'gray.700' : 'white'}
+                borderColor={colorMode === 'dark' ? 'gray.600' : 'gray.200'}
+                _hover={{ borderColor: 'blue.400' }}
+              />
+            </SimpleGrid>
+
+            {/* Deuxième ligne de filtres */}
+            <SimpleGrid columns={{ base: 1, md: 2 }} spacing={4} width="100%">
+              <Input
+                type="date"
+                value={startDate}
+                onChange={(e) => setStartDate(e.target.value)}
+                placeholder="Date de début"
+                bg={colorMode === 'dark' ? 'gray.700' : 'white'}
+                borderColor={colorMode === 'dark' ? 'gray.600' : 'gray.200'}
+                _hover={{ borderColor: 'blue.400' }}
+              />
+              <Input
+                type="date"
+                value={endDate}
+                onChange={(e) => setEndDate(e.target.value)}
+                placeholder="Date de fin"
+                bg={colorMode === 'dark' ? 'gray.700' : 'white'}
+                borderColor={colorMode === 'dark' ? 'gray.600' : 'gray.200'}
+                _hover={{ borderColor: 'blue.400' }}
+              />
+            </SimpleGrid>
+          </VStack>
+
+          {/* Liste des ventes */}
+          <Box 
+            borderWidth="1px" 
+            borderRadius="lg" 
+            overflow="hidden"
+            borderColor={colorMode === 'dark' ? 'gray.600' : 'gray.200'}
+            bg={colorMode === 'dark' ? 'gray.700' : 'white'}
+            shadow="sm"
+          >
+            <TableContainer>
+              <Table variant="simple">
+                <Thead>
+                  <Tr>
+                    <Th width="50px" display={{ base: "none", md: "table-cell" }}>Image</Th>
+                    <Th minWidth="200px">Nom</Th>
+                    <Th display={{ base: "none", lg: "table-cell" }}>Extension</Th>
+                    <Th 
+                      sx={{ cursor: 'pointer' }}
+                      onClick={() => handleSort('price')}
+                      minWidth="80px"
+                    >
+                      <HStack spacing={1}>
+                        <Text>Prix</Text>
+                        {sortField === 'price' && (
+                          <Box>{sortDirection === 'asc' ? '▲' : '▼'}</Box>
+                        )}
+                      </HStack>
+                    </Th>
+                    <Th 
+                      sx={{ cursor: 'pointer' }}
+                      onClick={() => handleSort('quantity')}
+                      display={{ base: "none", md: "table-cell" }}
+                      minWidth="60px"
+                    >
+                      <HStack spacing={1}>
+                        <Text>Qté</Text>
+                        {sortField === 'quantity' && (
+                          <Box>{sortDirection === 'asc' ? '▲' : '▼'}</Box>
+                        )}
+                      </HStack>
+                    </Th>
+                    <Th display={{ base: "none", lg: "table-cell" }} minWidth="80px">Total</Th>
+                    <Th 
+                      sx={{ cursor: 'pointer' }}
+                      onClick={() => handleSort('date')}
+                      minWidth="100px"
+                    >
+                      <HStack spacing={1}>
+                        <Text>Date</Text>
+                        {sortField === 'date' && (
+                          <Box>{sortDirection === 'asc' ? '▲' : '▼'}</Box>
+                        )}
+                      </HStack>
+                    </Th>
+                    <Th display={{ base: "none", lg: "table-cell" }} minWidth="120px">Lieu</Th>
+                    <Th width="50px">Actions</Th>
+                  </Tr>
+                </Thead>
+                <Tbody>
+                  {filteredSales.map((sale) => (
+                    <Tr 
+                      key={sale.id}
+                      _hover={{
+                        bg: colorMode === 'dark' ? 'gray.600' : 'gray.50',
+                        transition: 'all 0.2s'
+                      }}
+                    >
+                      <Td display={{ base: "none", md: "table-cell" }}>
+                        <Image
+                          src={sale.type === 'CARTE' 
+                            ? sale.card_image 
+                            : sale.sealed_image 
+                              ? `https://odryoxqrsdhsdhfueqqs.supabase.co/storage/v1/object/public/sealed-images/${session?.user?.id}/${sale.sealed_image}`
+                              : ''}
+                          alt={sale.type === 'CARTE' ? sale.card_name : sale.item_name}
+                          maxH="100px"
+                          objectFit="contain"
+                          fallback={<Box boxSize="100px" bg="gray.100" />}
+                        />
+                      </Td>
+                      <Td>
+                        <VStack align="start" spacing={2}>
+                          <Text noOfLines={2}>{sale.type === 'CARTE' ? sale.card_name : sale.item_name}</Text>
+                          <HStack wrap="wrap" spacing={2}>
+                            {sale.type === 'CARTE' && sale.language && (
+                              <Badge 
+                                colorScheme={getLabelColor('card_language', sale.language)}
+                                variant="solid"
+                              >
+                                {sale.language}
+                              </Badge>
+                            )}
+                            {sale.type === 'SCELLE' && sale.sub_type && (
+                              <Badge 
+                                colorScheme={getLabelColor('sealed_type', sale.sub_type)}
+                                variant="solid"
+                              >
+                                {sale.sub_type}
+                              </Badge>
+                            )}
+                            <Text fontSize="sm" display={{ base: "inline", md: "none" }}>
+                              x{sale.quantity}
+                            </Text>
+                          </HStack>
+                        </VStack>
+                      </Td>
+                      <Td display={{ base: "none", lg: "table-cell" }}>
+                        {extensions.find(e => e.id === sale.extension_id)?.code || '-'}
+                      </Td>
+                      <Td whiteSpace="nowrap">{sale.sale_price.toFixed(2)}€</Td>
+                      <Td display={{ base: "none", md: "table-cell" }}>{sale.quantity}</Td>
+                      <Td display={{ base: "none", lg: "table-cell" }} whiteSpace="nowrap">
+                        {(sale.sale_price * sale.quantity).toFixed(2)}€
+                      </Td>
+                      <Td whiteSpace="nowrap">{new Date(sale.sale_date).toLocaleDateString()}</Td>
+                      <Td display={{ base: "none", lg: "table-cell" }}>{sale.sale_location}</Td>
+                      <Td>
+                        <IconButton
+                          aria-label="Supprimer la vente"
+                          icon={<DeleteIcon />}
+                          colorScheme="red"
+                          size="sm"
+                          onClick={() => {
+                            setSaleToDelete(sale);
+                            onDeleteModalOpen();
+                          }}
+                          _hover={{
+                            transform: 'translateY(-2px)',
+                            boxShadow: 'md'
+                          }}
+                          transition="all 0.2s"
+                        />
+                      </Td>
+                    </Tr>
+                  ))}
+                </Tbody>
+              </Table>
+            </TableContainer>
           </Box>
-        </HStack>
-
-        {/* KPIs */}
-        <SalesStats sales={filteredSales} />
-
-        {/* Filtres */}
-        <VStack spacing={4} width="100%">
-          {/* Première ligne de filtres */}
-          <SimpleGrid columns={{ base: 1, md: 2, lg: 4 }} spacing={4} width="100%">
-            <Select
-              value={itemType}
-              onChange={(e) => setItemType(e.target.value as 'ALL' | 'SCELLE' | 'CARTE')}
-            >
-              <option value="ALL">Tous les types</option>
-              <option value="SCELLE">Scellé</option>
-              <option value="CARTE">Carte</option>
-            </Select>
-
-            <Select
-              value={selectedSeriesId?.toString() || ''}
-              onChange={(e) => {
-                const value = e.target.value ? parseInt(e.target.value) : null;
-                setSelectedSeriesId(value);
-                setSelectedExtensionId(null);
-              }}
-              placeholder="Toutes les séries"
-            >
-              {series.map(serie => (
-                <option key={serie.id} value={serie.id}>
-                  {serie.name} ({serie.code})
-                </option>
-              ))}
-            </Select>
-
-            <Select
-              value={selectedExtensionId?.toString() || ''}
-              onChange={(e) => setSelectedExtensionId(e.target.value ? parseInt(e.target.value) : null)}
-              placeholder="Toutes les extensions"
-              isDisabled={!selectedSeriesId}
-            >
-              {filteredExtensions.map(extension => (
-                <option key={extension.id} value={extension.id}>
-                  {extension.name} ({extension.code})
-                </option>
-              ))}
-            </Select>
-
-            <Input
-              placeholder="Rechercher..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-            />
-          </SimpleGrid>
-
-          {/* Deuxième ligne de filtres */}
-          <SimpleGrid columns={{ base: 1, md: 2 }} spacing={4} width="100%">
-            <Input
-              type="date"
-              value={startDate}
-              onChange={(e) => setStartDate(e.target.value)}
-              placeholder="Date de début"
-            />
-            <Input
-              type="date"
-              value={endDate}
-              onChange={(e) => setEndDate(e.target.value)}
-              placeholder="Date de fin"
-            />
-          </SimpleGrid>
         </VStack>
 
-        {/* Liste des ventes */}
-        <Box width="100%">
-          <TableContainer>
-            <Table variant="simple" size={{ base: "sm", md: "md" }}>
-              <Thead>
-                <Tr>
-                  <Th width="50px" display={{ base: "none", md: "table-cell" }}>Image</Th>
-                  <Th minWidth="200px">Nom</Th>
-                  <Th display={{ base: "none", lg: "table-cell" }}>Extension</Th>
-                  <Th 
-                    sx={{ cursor: 'pointer' }}
-                    onClick={() => handleSort('price')}
-                    minWidth="80px"
-                  >
-                    <HStack spacing={1}>
-                      <Text>Prix</Text>
-                      {sortField === 'price' && (
-                        <Box>{sortDirection === 'asc' ? '▲' : '▼'}</Box>
-                      )}
-                    </HStack>
-                  </Th>
-                  <Th 
-                    sx={{ cursor: 'pointer' }}
-                    onClick={() => handleSort('quantity')}
-                    display={{ base: "none", md: "table-cell" }}
-                    minWidth="60px"
-                  >
-                    <HStack spacing={1}>
-                      <Text>Qté</Text>
-                      {sortField === 'quantity' && (
-                        <Box>{sortDirection === 'asc' ? '▲' : '▼'}</Box>
-                      )}
-                    </HStack>
-                  </Th>
-                  <Th display={{ base: "none", lg: "table-cell" }} minWidth="80px">Total</Th>
-                  <Th 
-                    sx={{ cursor: 'pointer' }}
-                    onClick={() => handleSort('date')}
-                    minWidth="100px"
-                  >
-                    <HStack spacing={1}>
-                      <Text>Date</Text>
-                      {sortField === 'date' && (
-                        <Box>{sortDirection === 'asc' ? '▲' : '▼'}</Box>
-                      )}
-                    </HStack>
-                  </Th>
-                  <Th display={{ base: "none", lg: "table-cell" }} minWidth="120px">Lieu</Th>
-                  <Th width="50px">Actions</Th>
-                </Tr>
-              </Thead>
-              <Tbody>
-                {filteredSales.map((sale) => (
-                  <Tr key={sale.id}>
-                    <Td display={{ base: "none", md: "table-cell" }}>
-                      <Image
-                        src={sale.type === 'CARTE' 
-                          ? sale.card_image 
-                          : sale.sealed_image 
-                            ? `https://odryoxqrsdhsdhfueqqs.supabase.co/storage/v1/object/public/sealed-images/${session?.user?.id}/${sale.sealed_image}`
-                            : ''}
-                        alt={sale.type === 'CARTE' ? sale.card_name : sale.item_name}
-                        maxH="100px"
-                        objectFit="contain"
-                        fallback={<Box boxSize="100px" bg="gray.100" />}
-                        onError={(e) => {
-                          console.error('Erreur de chargement de l\'image:', 
-                            sale.type === 'CARTE' 
-                              ? sale.card_image 
-                              : `https://odryoxqrsdhsdhfueqqs.supabase.co/storage/v1/object/public/sealed-images/${session?.user?.id}/${sale.sealed_image}`
-                          );
-                        }}
-                      />
-                    </Td>
-                    <Td>
-                      <VStack align="start" spacing={2}>
-                        <Text noOfLines={2}>{sale.type === 'CARTE' ? sale.card_name : sale.item_name}</Text>
-                        <HStack wrap="wrap" spacing={2}>
-                          {sale.type === 'CARTE' && sale.language && (
-                            <Badge 
-                              colorScheme={getLabelColor('card_language', sale.language)}
-                              variant="solid"
-                            >
-                              {sale.language}
-                            </Badge>
-                          )}
-                          {sale.type === 'SCELLE' && sale.sub_type && (
-                            <Badge 
-                              colorScheme={getLabelColor('sealed_type', sale.sub_type)}
-                              variant="solid"
-                            >
-                              {sale.sub_type}
-                            </Badge>
-                          )}
-                          <Text fontSize="sm" display={{ base: "inline", md: "none" }}>
-                            x{sale.quantity}
-                          </Text>
-                        </HStack>
-                      </VStack>
-                    </Td>
-                    <Td display={{ base: "none", lg: "table-cell" }}>
-                      {extensions.find(e => e.id === sale.extension_id)?.code || '-'}
-                    </Td>
-                    <Td whiteSpace="nowrap">{sale.sale_price.toFixed(2)}€</Td>
-                    <Td display={{ base: "none", md: "table-cell" }}>{sale.quantity}</Td>
-                    <Td display={{ base: "none", lg: "table-cell" }} whiteSpace="nowrap">{(sale.sale_price * sale.quantity).toFixed(2)}€</Td>
-                    <Td whiteSpace="nowrap">{new Date(sale.sale_date).toLocaleDateString()}</Td>
-                    <Td display={{ base: "none", lg: "table-cell" }}>{sale.sale_location}</Td>
-                    <Td>
-                      <IconButton
-                        aria-label="Supprimer la vente"
-                        icon={<DeleteIcon />}
-                        colorScheme="red"
-                        size="sm"
-                        onClick={() => {
-                          setSaleToDelete(sale);
-                          onDeleteModalOpen();
-                        }}
-                      />
-                    </Td>
-                  </Tr>
-                ))}
-              </Tbody>
-            </Table>
-          </TableContainer>
-        </Box>
-      </VStack>
-
-      {/* Modal de confirmation de suppression */}
-      <Modal isOpen={isDeleteModalOpen} onClose={onDeleteModalClose}>
-        <ModalOverlay />
-        <ModalContent>
-          <ModalHeader>Confirmer la suppression</ModalHeader>
-          <ModalCloseButton />
-          <ModalBody>
-            <Text>
-              Êtes-vous sûr de vouloir supprimer cette vente ? Cette action :
-            </Text>
-            <UnorderedList mt={2}>
-              <ListItem>Supprimera l'enregistrement de la vente</ListItem>
-              <ListItem>Remettra en stock {saleToDelete?.quantity} exemplaire{saleToDelete?.quantity !== 1 ? 's' : ''}</ListItem>
-              <ListItem>Ne peut pas être annulée</ListItem>
-            </UnorderedList>
-          </ModalBody>
-          <ModalFooter>
-            <Button variant="ghost" mr={3} onClick={onDeleteModalClose}>
-              Annuler
-            </Button>
-            <Button colorScheme="red" onClick={handleDeleteSale}>
-              Confirmer la suppression
-            </Button>
-          </ModalFooter>
-        </ModalContent>
-      </Modal>
-    </Container>
+        {/* Modal de confirmation de suppression */}
+        <Modal isOpen={isDeleteModalOpen} onClose={onDeleteModalClose}>
+          <ModalOverlay />
+          <ModalContent bg={colorMode === 'dark' ? 'gray.700' : 'white'}>
+            <ModalHeader>Confirmer la suppression</ModalHeader>
+            <ModalCloseButton />
+            <ModalBody>
+              <Text>
+                Êtes-vous sûr de vouloir supprimer cette vente ? Cette action :
+              </Text>
+              <UnorderedList mt={2}>
+                <ListItem>Supprimera l'enregistrement de la vente</ListItem>
+                <ListItem>Remettra en stock {saleToDelete?.quantity} exemplaire{saleToDelete?.quantity !== 1 ? 's' : ''}</ListItem>
+                <ListItem>Ne peut pas être annulée</ListItem>
+              </UnorderedList>
+            </ModalBody>
+            <ModalFooter>
+              <Button 
+                variant="ghost" 
+                mr={3} 
+                onClick={onDeleteModalClose}
+                _hover={{
+                  bg: colorMode === 'dark' ? 'gray.600' : 'gray.100',
+                  transform: 'translateY(-2px)'
+                }}
+              >
+                Annuler
+              </Button>
+              <Button 
+                colorScheme="red" 
+                onClick={handleDeleteSale}
+                _hover={{
+                  transform: 'translateY(-2px)',
+                  boxShadow: 'md'
+                }}
+              >
+                Confirmer la suppression
+              </Button>
+            </ModalFooter>
+          </ModalContent>
+        </Modal>
+      </Container>
+    </Box>
   );
 }; 

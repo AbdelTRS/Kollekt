@@ -137,8 +137,16 @@ export const MyPreorders = () => {
   const [isEditMode, setIsEditMode] = useState(false);
   const [editingItem, setEditingItem] = useState<string | null>(null);
 
-  // Thème
-  const hoverBgColor = useColorModeValue('gray.100', 'gray.600');
+  // Amélioration des thèmes de couleurs
+  const bgColor = useColorModeValue('gray.50', 'gray.800');
+  const bgCard = useColorModeValue('white', 'gray.700');
+  const borderColor = useColorModeValue('gray.200', 'gray.600');
+  const hoverBgColor = useColorModeValue('blue.50', 'gray.600');
+  const textColor = useColorModeValue('gray.700', 'gray.100');
+  const secondaryTextColor = useColorModeValue('gray.600', 'gray.300');
+  const tableHeaderBg = useColorModeValue('gray.100', 'gray.700');
+  const tableBorderColor = useColorModeValue('gray.200', 'gray.600');
+  const tableStripedBg = useColorModeValue('gray.50', 'gray.700');
 
   // Nouveaux états pour les filtres
   const [selectedMonth, setSelectedMonth] = useState<string | null>(null);
@@ -146,9 +154,6 @@ export const MyPreorders = () => {
   const [selectedExtensionId, setSelectedExtensionId] = useState<number | null>(null);
   const [filteredPreorders, setFilteredPreorders] = useState<PreorderItem[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
-
-  const bgCard = useColorModeValue('white', 'gray.700');
-  const borderColor = useColorModeValue('gray.200', 'gray.600');
 
   // Charger les précommandes
   const fetchPreorders = useCallback(async () => {
@@ -592,468 +597,501 @@ export const MyPreorders = () => {
     .reduce((acc, item) => acc + item.quantity, 0);
 
   return (
-    <Container maxW="container.xl" py={10}>
-      <VStack spacing={6} align="stretch">
-        <HStack justify="space-between" align="center">
-          <Heading>Mes Précommandes</Heading>
-          <Box maxWidth="300px" width="100%">
+    <Box bg={bgColor} minH="100vh">
+      <Container maxW="container.xl" py={10}>
+        <VStack spacing={6} align="stretch">
+          <HStack justify="space-between" align="center" bg={bgCard} p={4} borderRadius="lg" shadow="sm">
+            <Heading size="lg" color={textColor}>Mes Précommandes</Heading>
+            <Box maxWidth="300px" width="100%">
+              <Select
+                value={selectedMonth || 'all'}
+                onChange={(e) => {
+                  const value = e.target.value === 'all' ? null : e.target.value;
+                  setSelectedMonth(value);
+                }}
+                bg={bgCard}
+                borderColor={borderColor}
+                _hover={{ borderColor: 'blue.400' }}
+              >
+                <option value="all">Toutes les précommandes</option>
+                {Array.from(new Set(preorders.map(preorder => {
+                  const date = new Date(preorder.type === 'CARTE' ? preorder.card_purchase_date! : preorder.purchase_date!);
+                  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+                }))).sort().reverse().map(month => {
+                  const [year, monthNum] = month.split('-');
+                  const date = new Date(parseInt(year), parseInt(monthNum) - 1);
+                  const monthName = date.toLocaleDateString('fr-FR', {
+                    month: 'long',
+                    year: 'numeric'
+                  });
+                  return (
+                    <option key={month} value={month}>
+                      {monthName.charAt(0).toUpperCase() + monthName.slice(1)}
+                    </option>
+                  );
+                })}
+              </Select>
+            </Box>
+          </HStack>
+
+          {/* KPIs */}
+          <SimpleGrid columns={{ base: 2, md: 4 }} spacing={4}>
+            <Box p={6} borderRadius="lg" bg={bgCard} borderWidth="1px" borderColor={borderColor} shadow="sm" 
+                 _hover={{ shadow: 'md', transform: 'translateY(-2px)', transition: 'all 0.2s' }}>
+              <Stat>
+                <StatLabel color={secondaryTextColor} fontSize="sm" fontWeight="medium">Investissement Total</StatLabel>
+                <StatNumber color="blue.500" fontSize="2xl" fontWeight="bold">
+                  {totalInvestment.toLocaleString('fr-FR', { style: 'currency', currency: 'EUR' })}
+                </StatNumber>
+              </Stat>
+            </Box>
+
+            <Box p={6} borderRadius="lg" bg={bgCard} borderWidth="1px" borderColor={borderColor} shadow="sm"
+                 _hover={{ shadow: 'md', transform: 'translateY(-2px)', transition: 'all 0.2s' }}>
+              <Stat>
+                <StatLabel color={secondaryTextColor} fontSize="sm" fontWeight="medium">Nombre de Précommandes</StatLabel>
+                <StatNumber color="purple.500" fontSize="2xl" fontWeight="bold">{totalPreorders}</StatNumber>
+              </Stat>
+            </Box>
+
+            <Box p={6} borderRadius="lg" bg={bgCard} borderWidth="1px" borderColor={borderColor} shadow="sm"
+                 _hover={{ shadow: 'md', transform: 'translateY(-2px)', transition: 'all 0.2s' }}>
+              <Stat>
+                <StatLabel color={secondaryTextColor} fontSize="sm" fontWeight="medium">Distribution</StatLabel>
+                <StatNumber color="green.500" fontSize="2xl" fontWeight="bold">{totalPreorders}</StatNumber>
+                <StatHelpText color={secondaryTextColor}>
+                  <Badge colorScheme="blue" mr={2}>Scellés: {totalSealedPreorders}</Badge>
+                  <Badge colorScheme="purple">Cartes: {totalCardPreorders}</Badge>
+                </StatHelpText>
+              </Stat>
+            </Box>
+
+            <Box p={6} borderRadius="lg" bg={bgCard} borderWidth="1px" borderColor={borderColor} shadow="sm"
+                 _hover={{ shadow: 'md', transform: 'translateY(-2px)', transition: 'all 0.2s' }}>
+              <Stat>
+                <StatLabel color={secondaryTextColor} fontSize="sm" fontWeight="medium">Date de réception moyenne</StatLabel>
+                <StatNumber color="orange.500" fontSize="2xl" fontWeight="bold">
+                  {filteredPreorders.length > 0 
+                    ? new Date(Math.max(...filteredPreorders.map(p => new Date(p.expected_date || '').getTime())))
+                        .toLocaleDateString('fr-FR')
+                    : '-'}
+                </StatNumber>
+              </Stat>
+            </Box>
+          </SimpleGrid>
+
+          {/* Filtres */}
+          <SimpleGrid columns={{ base: 1, md: 3 }} spacing={4} bg={bgCard} p={4} borderRadius="lg" shadow="sm">
             <Select
-              value={selectedMonth || 'all'}
+              value={selectedSeriesId?.toString() || ''}
               onChange={(e) => {
-                const value = e.target.value === 'all' ? null : e.target.value;
-                setSelectedMonth(value);
+                const value = e.target.value ? parseInt(e.target.value) : null;
+                setSelectedSeriesId(value);
+                setSelectedExtensionId(null);
               }}
+              placeholder="Toutes les séries"
+              bg={bgColor}
+              borderColor={borderColor}
+              _hover={{ borderColor: 'blue.400' }}
+              color={textColor}
             >
-              <option value="all">Toutes les précommandes</option>
-              {Array.from(new Set(preorders.map(preorder => {
-                const date = new Date(preorder.type === 'CARTE' ? preorder.card_purchase_date! : preorder.purchase_date!);
-                return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
-              }))).sort().reverse().map(month => {
-                const [year, monthNum] = month.split('-');
-                const date = new Date(parseInt(year), parseInt(monthNum) - 1);
-                const monthName = date.toLocaleDateString('fr-FR', {
-                  month: 'long',
-                  year: 'numeric'
-                });
-                return (
-                  <option key={month} value={month}>
-                    {monthName.charAt(0).toUpperCase() + monthName.slice(1)}
-                  </option>
-                );
-              })}
-            </Select>
-          </Box>
-        </HStack>
-
-        {/* KPIs */}
-        <SimpleGrid columns={{ base: 2, md: 4 }} spacing={4}>
-          <Box p={4} borderRadius="lg" bg={bgCard} borderWidth="1px" borderColor={borderColor} shadow="sm">
-            <Stat>
-              <StatLabel>Investissement Total</StatLabel>
-              <StatNumber>
-                {totalInvestment.toLocaleString('fr-FR', { style: 'currency', currency: 'EUR' })}
-              </StatNumber>
-            </Stat>
-          </Box>
-
-          <Box p={4} borderRadius="lg" bg={bgCard} borderWidth="1px" borderColor={borderColor} shadow="sm">
-            <Stat>
-              <StatLabel>Nombre de Précommandes</StatLabel>
-              <StatNumber>{totalPreorders}</StatNumber>
-            </Stat>
-          </Box>
-
-          <Box p={4} borderRadius="lg" bg={bgCard} borderWidth="1px" borderColor={borderColor} shadow="sm">
-            <Stat>
-              <StatLabel>Distribution</StatLabel>
-              <StatNumber>{totalPreorders}</StatNumber>
-              <StatHelpText>Scellés: {totalSealedPreorders} | Cartes: {totalCardPreorders}</StatHelpText>
-            </Stat>
-          </Box>
-
-          <Box p={4} borderRadius="lg" bg={bgCard} borderWidth="1px" borderColor={borderColor} shadow="sm">
-            <Stat>
-              <StatLabel>Date de réception moyenne</StatLabel>
-              <StatNumber>
-                {filteredPreorders.length > 0 
-                  ? new Date(Math.max(...filteredPreorders.map(p => new Date(p.expected_date || '').getTime())))
-                      .toLocaleDateString('fr-FR')
-                  : '-'}
-              </StatNumber>
-            </Stat>
-          </Box>
-        </SimpleGrid>
-
-        {/* Filtres */}
-        <SimpleGrid columns={{ base: 1, md: 3 }} spacing={4} width="100%">
-          <Select
-            value={selectedSeriesId?.toString() || ''}
-            onChange={(e) => {
-              const value = e.target.value ? parseInt(e.target.value) : null;
-              setSelectedSeriesId(value);
-              setSelectedExtensionId(null);
-            }}
-            placeholder="Toutes les séries"
-          >
-            {series.map(serie => (
-              <option key={serie.id} value={serie.id}>
-                {serie.name} ({serie.code})
-              </option>
-            ))}
-          </Select>
-
-          <Select
-            value={selectedExtensionId?.toString() || ''}
-            onChange={(e) => setSelectedExtensionId(e.target.value ? parseInt(e.target.value) : null)}
-            placeholder="Toutes les extensions"
-            isDisabled={!selectedSeriesId}
-          >
-            {extensions.filter(ext => ext.series_id === selectedSeriesId).map(extension => (
-              <option key={extension.id} value={extension.id}>
-                {extension.name} ({extension.code})
-              </option>
-            ))}
-          </Select>
-
-          <Input
-            placeholder="Rechercher..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-          />
-        </SimpleGrid>
-
-        <Flex align="center">
-          <Heading>Mes Précommandes</Heading>
-          <Spacer />
-          <ButtonGroup>
-            <Button
-              leftIcon={<AddIcon />}
-              colorScheme="blue"
-              onClick={onAddOpen}
-            >
-              Ajouter
-            </Button>
-            <Button
-              leftIcon={<DeleteIcon />}
-              colorScheme="red"
-              variant="outline"
-              isDisabled={selectedItems.size === 0}
-              onClick={onDeleteOpen}
-            >
-              Supprimer
-            </Button>
-            <Button
-              leftIcon={<CheckIcon />}
-              colorScheme="green"
-              isDisabled={selectedItems.size === 0}
-              onClick={handleMarkAsReceived}
-              isLoading={isLoading}
-            >
-              Marquer comme reçu
-            </Button>
-          </ButtonGroup>
-        </Flex>
-
-        <TableContainer>
-          <Table variant="simple">
-            <Thead>
-              <Tr>
-                <Th width="50px">
-                  <Checkbox
-                    isChecked={selectedItems.size === preorders.length && preorders.length > 0}
-                    isIndeterminate={selectedItems.size > 0 && selectedItems.size < preorders.length}
-                    onChange={handleSelectAll}
-                  />
-                </Th>
-                <Th width="50px">Image</Th>
-                <Th>Nom</Th>
-                <Th>Extension</Th>
-                <Th>Prix</Th>
-                <Th>Quantité</Th>
-                <Th>Date de commande</Th>
-                <Th>Date prévue</Th>
-              </Tr>
-            </Thead>
-            <Tbody>
-              {filteredPreorders.map((item) => (
-                <Tr 
-                  key={item.id}
-                  _hover={{ bg: hoverBgColor, cursor: 'pointer' }}
-                  onClick={() => loadItemDetails(item.id)}
-                >
-                  <Td onClick={(e) => e.stopPropagation()}>
-                    <Checkbox
-                      isChecked={selectedItems.has(item.id)}
-                      onChange={() => handleItemSelect(item.id)}
-                    />
-                  </Td>
-                  <Td>
-                    <Image
-                      src={getImageUrl(item.type, item.type === 'CARTE' ? item.card_image : item.sealed_image, session?.user?.id)}
-                      alt={item.type === 'CARTE' ? item.card_name : item.item_name}
-                      boxSize="50px"
-                      objectFit="contain"
-                      fallback={<Box boxSize="50px" bg="gray.100" />}
-                    />
-                  </Td>
-                  <Td>
-                    <Text>{item.type === 'CARTE' ? item.card_name : item.item_name}</Text>
-                    {item.type === 'CARTE' && item.language && (
-                      <Badge colorScheme={item.language === 'FR' ? 'blue' : 'red'} ml={2}>
-                        {item.language}
-                      </Badge>
-                    )}
-                    {item.type === 'SCELLE' && item.sub_type && (
-                      <Badge colorScheme="purple" ml={2}>
-                        {item.sub_type}
-                      </Badge>
-                    )}
-                  </Td>
-                  <Td>{item.extension_id}</Td>
-                  <Td>
-                    {item.type === 'CARTE' 
-                      ? `${item.card_purchase_price}€`
-                      : `${item.purchase_price}€`
-                    }
-                  </Td>
-                  <Td>{item.quantity}</Td>
-                  <Td>
-                    {item.type === 'CARTE'
-                      ? new Date(item.card_purchase_date || '').toLocaleDateString()
-                      : new Date(item.purchase_date || '').toLocaleDateString()
-                    }
-                  </Td>
-                  <Td>
-                    {item.expected_date
-                      ? new Date(item.expected_date).toLocaleDateString()
-                      : '-'
-                    }
-                  </Td>
-                </Tr>
+              {series.map(serie => (
+                <option key={serie.id} value={serie.id}>
+                  {serie.name} ({serie.code})
+                </option>
               ))}
-            </Tbody>
-          </Table>
-        </TableContainer>
+            </Select>
 
-        {/* Modal d'ajout/modification de précommande */}
-        <Modal isOpen={isAddOpen} onClose={onAddClose} size="xl">
-          <ModalOverlay />
-          <ModalContent>
-            <ModalHeader>{isEditMode ? 'Modifier la précommande' : 'Ajouter une précommande'}</ModalHeader>
-            <ModalCloseButton />
-            <ModalBody>
-              <VStack spacing={4}>
-                {/* Champ pour l'image */}
-                <FormControl>
-                  <FormLabel>Image du produit</FormLabel>
-                  <VStack spacing={4}>
-                    {imagePreview && (
-                      <Image
-                        src={imagePreview}
-                        alt="Aperçu"
-                        maxH="200px"
-                        objectFit="contain"
+            <Select
+              value={selectedExtensionId?.toString() || ''}
+              onChange={(e) => setSelectedExtensionId(e.target.value ? parseInt(e.target.value) : null)}
+              placeholder="Toutes les extensions"
+              isDisabled={!selectedSeriesId}
+              bg={bgColor}
+              borderColor={borderColor}
+              _hover={{ borderColor: 'blue.400' }}
+              color={textColor}
+            >
+              {extensions.filter(ext => ext.series_id === selectedSeriesId).map(extension => (
+                <option key={extension.id} value={extension.id}>
+                  {extension.name} ({extension.code})
+                </option>
+              ))}
+            </Select>
+
+            <Input
+              placeholder="Rechercher..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              bg={bgColor}
+              borderColor={borderColor}
+              _hover={{ borderColor: 'blue.400' }}
+              color={textColor}
+            />
+          </SimpleGrid>
+
+          <Box bg={bgCard} borderRadius="lg" shadow="sm" p={4}>
+            <Flex align="center" mb={4}>
+              <ButtonGroup spacing={4}>
+                <Button
+                  leftIcon={<AddIcon />}
+                  colorScheme="blue"
+                  onClick={onAddOpen}
+                  size="sm"
+                  _hover={{ transform: 'translateY(-2px)', shadow: 'md' }}
+                >
+                  Ajouter
+                </Button>
+                <Button
+                  leftIcon={<DeleteIcon />}
+                  colorScheme="red"
+                  variant="outline"
+                  isDisabled={selectedItems.size === 0}
+                  onClick={onDeleteOpen}
+                  size="sm"
+                  _hover={{ transform: 'translateY(-2px)', shadow: 'md' }}
+                >
+                  Supprimer
+                </Button>
+                <Button
+                  leftIcon={<CheckIcon />}
+                  colorScheme="green"
+                  isDisabled={selectedItems.size === 0}
+                  onClick={handleMarkAsReceived}
+                  isLoading={isLoading}
+                  size="sm"
+                  _hover={{ transform: 'translateY(-2px)', shadow: 'md' }}
+                >
+                  Marquer comme reçu
+                </Button>
+              </ButtonGroup>
+            </Flex>
+
+            <TableContainer>
+              <Table variant="simple">
+                <Thead bg={tableHeaderBg}>
+                  <Tr>
+                    <Th width="50px" borderColor={tableBorderColor}>
+                      <Checkbox
+                        isChecked={selectedItems.size === preorders.length && preorders.length > 0}
+                        isIndeterminate={selectedItems.size > 0 && selectedItems.size < preorders.length}
+                        onChange={handleSelectAll}
+                        colorScheme="blue"
                       />
-                    )}
-                    <Input
-                      type="file"
-                      accept="image/*"
-                      onChange={handleImageChange}
-                      display="none"
-                      id="image-upload"
-                    />
-                    <Button as="label" htmlFor="image-upload" cursor="pointer">
-                      Choisir une image
-                    </Button>
-                  </VStack>
-                </FormControl>
+                    </Th>
+                    <Th width="50px" borderColor={tableBorderColor}>Image</Th>
+                    <Th borderColor={tableBorderColor} color={textColor}>Nom</Th>
+                    <Th borderColor={tableBorderColor} color={textColor}>Extension</Th>
+                    <Th borderColor={tableBorderColor} color={textColor}>Prix</Th>
+                    <Th borderColor={tableBorderColor} color={textColor}>Quantité</Th>
+                    <Th borderColor={tableBorderColor} color={textColor}>Date de commande</Th>
+                    <Th borderColor={tableBorderColor} color={textColor}>Date prévue</Th>
+                  </Tr>
+                </Thead>
+                <Tbody>
+                  {filteredPreorders.map((item, index) => (
+                    <Tr 
+                      key={item.id}
+                      _hover={{ bg: hoverBgColor, cursor: 'pointer' }}
+                      onClick={() => loadItemDetails(item.id)}
+                      bg={index % 2 === 0 ? tableStripedBg : 'transparent'}
+                    >
+                      <Td onClick={(e) => e.stopPropagation()} borderColor={tableBorderColor}>
+                        <Checkbox
+                          isChecked={selectedItems.has(item.id)}
+                          onChange={() => handleItemSelect(item.id)}
+                          colorScheme="blue"
+                        />
+                      </Td>
+                      <Td borderColor={tableBorderColor}>
+                        <Image
+                          src={getImageUrl(item.type, item.type === 'CARTE' ? item.card_image : item.sealed_image, session?.user?.id)}
+                          alt={item.type === 'CARTE' ? item.card_name : item.item_name}
+                          boxSize="50px"
+                          objectFit="contain"
+                          fallback={<Box boxSize="50px" bg="gray.100" />}
+                        />
+                      </Td>
+                      <Td borderColor={tableBorderColor} color={textColor}>
+                        <Text>{item.type === 'CARTE' ? item.card_name : item.item_name}</Text>
+                        {item.type === 'CARTE' && item.language && (
+                          <Badge colorScheme={item.language === 'FR' ? 'blue' : 'red'} ml={2}>
+                            {item.language}
+                          </Badge>
+                        )}
+                        {item.type === 'SCELLE' && item.sub_type && (
+                          <Badge colorScheme="purple" ml={2}>
+                            {item.sub_type}
+                          </Badge>
+                        )}
+                      </Td>
+                      <Td borderColor={tableBorderColor} color={textColor}>{item.extension_id}</Td>
+                      <Td borderColor={tableBorderColor} color={textColor}>
+                        {item.type === 'CARTE' 
+                          ? `${item.card_purchase_price}€`
+                          : `${item.purchase_price}€`
+                        }
+                      </Td>
+                      <Td borderColor={tableBorderColor} color={textColor}>{item.quantity}</Td>
+                      <Td borderColor={tableBorderColor} color={textColor}>
+                        {item.type === 'CARTE'
+                          ? new Date(item.card_purchase_date || '').toLocaleDateString()
+                          : new Date(item.purchase_date || '').toLocaleDateString()
+                        }
+                      </Td>
+                      <Td borderColor={tableBorderColor} color={textColor}>
+                        {item.expected_date
+                          ? new Date(item.expected_date).toLocaleDateString()
+                          : '-'
+                        }
+                      </Td>
+                    </Tr>
+                  ))}
+                </Tbody>
+              </Table>
+            </TableContainer>
+          </Box>
 
-                {/* Sélection d'images existantes */}
-                {existingImages.length > 0 && (
+          {/* Modal d'ajout/modification de précommande */}
+          <Modal isOpen={isAddOpen} onClose={onAddClose} size="xl">
+            <ModalOverlay />
+            <ModalContent>
+              <ModalHeader>{isEditMode ? 'Modifier la précommande' : 'Ajouter une précommande'}</ModalHeader>
+              <ModalCloseButton />
+              <ModalBody>
+                <VStack spacing={4}>
+                  {/* Champ pour l'image */}
                   <FormControl>
-                    <FormLabel>Ou choisir depuis la bibliothèque</FormLabel>
-                    <SimpleGrid columns={4} spacing={4} maxH="200px" overflowY="auto">
-                      {existingImages.map((img, index) => (
-                        <Box
-                          key={index}
-                          position="relative"
-                          cursor="pointer"
-                          onClick={() => handleSelectExistingImage(img.name)}
-                          borderWidth={newItem.sealedImage === img.name ? 2 : 1}
-                          borderColor={newItem.sealedImage === img.name ? 'blue.500' : 'gray.200'}
-                          borderRadius="md"
-                          p={2}
-                        >
-                          <Image
-                            src={img.url}
-                            alt={`Image ${index + 1}`}
-                            maxH="100px"
-                            objectFit="contain"
-                            margin="auto"
-                          />
-                        </Box>
-                      ))}
-                    </SimpleGrid>
+                    <FormLabel>Image du produit</FormLabel>
+                    <VStack spacing={4}>
+                      {imagePreview && (
+                        <Image
+                          src={imagePreview}
+                          alt="Aperçu"
+                          maxH="200px"
+                          objectFit="contain"
+                        />
+                      )}
+                      <Input
+                        type="file"
+                        accept="image/*"
+                        onChange={handleImageChange}
+                        display="none"
+                        id="image-upload"
+                      />
+                      <Button as="label" htmlFor="image-upload" cursor="pointer">
+                        Choisir une image
+                      </Button>
+                    </VStack>
                   </FormControl>
-                )}
 
-                <FormControl isRequired>
-                  <FormLabel>Nom de l'item</FormLabel>
-                  <Input
-                    value={newItem.itemName}
-                    onChange={(e) => setNewItem({ ...newItem, itemName: e.target.value })}
-                  />
-                </FormControl>
+                  {/* Sélection d'images existantes */}
+                  {existingImages.length > 0 && (
+                    <FormControl>
+                      <FormLabel>Ou choisir depuis la bibliothèque</FormLabel>
+                      <SimpleGrid columns={4} spacing={4} maxH="200px" overflowY="auto">
+                        {existingImages.map((img, index) => (
+                          <Box
+                            key={index}
+                            position="relative"
+                            cursor="pointer"
+                            onClick={() => handleSelectExistingImage(img.name)}
+                            borderWidth={newItem.sealedImage === img.name ? 2 : 1}
+                            borderColor={newItem.sealedImage === img.name ? 'blue.500' : 'gray.200'}
+                            borderRadius="md"
+                            p={2}
+                          >
+                            <Image
+                              src={img.url}
+                              alt={`Image ${index + 1}`}
+                              maxH="100px"
+                              objectFit="contain"
+                              margin="auto"
+                            />
+                          </Box>
+                        ))}
+                      </SimpleGrid>
+                    </FormControl>
+                  )}
 
-                <FormControl isRequired>
-                  <FormLabel>Type de produit scellé</FormLabel>
-                  <Select
-                    value={newItem.sealedType}
-                    onChange={(e) => setNewItem({ ...newItem, sealedType: e.target.value })}
-                  >
-                    <option value="">Sélectionner un type</option>
-                    <option value="Elite Trainer Box">Elite Trainer Box</option>
-                    <option value="Blister">Blister</option>
-                    <option value="Display">Display</option>
-                    <option value="Coffret">Coffret</option>
-                    <option value="UPC">UPC</option>
-                    <option value="Tripack">Tripack</option>
-                    <option value="Duopack">Duopack</option>
-                    <option value="Bundle">Bundle</option>
-                    <option value="Demi display">Demi display</option>
-                    <option value="Mini-tins">Mini-tins</option>
-                    <option value="Tin cube">Tin cube</option>
-                    <option value="Booster en lose">Booster en lose</option>
-                    <option value="Artset">Artset</option>
-                  </Select>
-                </FormControl>
+                  <FormControl isRequired>
+                    <FormLabel>Nom de l'item</FormLabel>
+                    <Input
+                      value={newItem.itemName}
+                      onChange={(e) => setNewItem({ ...newItem, itemName: e.target.value })}
+                    />
+                  </FormControl>
 
-                <FormControl isRequired>
-                  <FormLabel>Série</FormLabel>
-                  <Select
-                    value={newItem.selectedSeriesId?.toString() || ''}
-                    onChange={(e) => setNewItem({
-                      ...newItem,
-                      selectedSeriesId: e.target.value ? parseInt(e.target.value) : null,
-                      selectedExtensionId: null
-                    })}
-                  >
-                    <option value="">Sélectionner une série</option>
-                    {series.map(serie => (
-                      <option key={serie.id} value={serie.id}>
-                        {serie.name} ({serie.code})
-                      </option>
-                    ))}
-                  </Select>
-                </FormControl>
+                  <FormControl isRequired>
+                    <FormLabel>Type de produit scellé</FormLabel>
+                    <Select
+                      value={newItem.sealedType}
+                      onChange={(e) => setNewItem({ ...newItem, sealedType: e.target.value })}
+                    >
+                      <option value="">Sélectionner un type</option>
+                      <option value="Elite Trainer Box">Elite Trainer Box</option>
+                      <option value="Blister">Blister</option>
+                      <option value="Display">Display</option>
+                      <option value="Coffret">Coffret</option>
+                      <option value="UPC">UPC</option>
+                      <option value="Tripack">Tripack</option>
+                      <option value="Duopack">Duopack</option>
+                      <option value="Bundle">Bundle</option>
+                      <option value="Demi display">Demi display</option>
+                      <option value="Mini-tins">Mini-tins</option>
+                      <option value="Tin cube">Tin cube</option>
+                      <option value="Booster en lose">Booster en lose</option>
+                      <option value="Artset">Artset</option>
+                    </Select>
+                  </FormControl>
 
-                <FormControl isRequired>
-                  <FormLabel>Extension</FormLabel>
-                  <Select
-                    value={newItem.selectedExtensionId?.toString() || ''}
-                    onChange={(e) => setNewItem({
-                      ...newItem,
-                      selectedExtensionId: e.target.value ? parseInt(e.target.value) : null
-                    })}
-                    isDisabled={!newItem.selectedSeriesId}
-                  >
-                    <option value="">Sélectionner une extension</option>
-                    {filteredExtensions.map(extension => (
-                      <option key={extension.id} value={extension.id}>
-                        {extension.name} ({extension.code})
-                      </option>
-                    ))}
-                  </Select>
-                </FormControl>
+                  <FormControl isRequired>
+                    <FormLabel>Série</FormLabel>
+                    <Select
+                      value={newItem.selectedSeriesId?.toString() || ''}
+                      onChange={(e) => setNewItem({
+                        ...newItem,
+                        selectedSeriesId: e.target.value ? parseInt(e.target.value) : null,
+                        selectedExtensionId: null
+                      })}
+                    >
+                      <option value="">Sélectionner une série</option>
+                      {series.map(serie => (
+                        <option key={serie.id} value={serie.id}>
+                          {serie.name} ({serie.code})
+                        </option>
+                      ))}
+                    </Select>
+                  </FormControl>
 
-                <FormControl isRequired>
-                  <FormLabel>Prix d'achat</FormLabel>
-                  <NumberInput
-                    value={newItem.purchasePrice}
-                    onChange={(value) => setNewItem({ ...newItem, purchasePrice: value })}
-                    min={0}
-                    precision={2}
-                  >
-                    <NumberInputField />
-                    <NumberInputStepper>
-                      <NumberIncrementStepper />
-                      <NumberDecrementStepper />
-                    </NumberInputStepper>
-                  </NumberInput>
-                </FormControl>
+                  <FormControl isRequired>
+                    <FormLabel>Extension</FormLabel>
+                    <Select
+                      value={newItem.selectedExtensionId?.toString() || ''}
+                      onChange={(e) => setNewItem({
+                        ...newItem,
+                        selectedExtensionId: e.target.value ? parseInt(e.target.value) : null
+                      })}
+                      isDisabled={!newItem.selectedSeriesId}
+                    >
+                      <option value="">Sélectionner une extension</option>
+                      {filteredExtensions.map(extension => (
+                        <option key={extension.id} value={extension.id}>
+                          {extension.name} ({extension.code})
+                        </option>
+                      ))}
+                    </Select>
+                  </FormControl>
 
-                <FormControl isRequired>
-                  <FormLabel>Quantité</FormLabel>
-                  <NumberInput
-                    value={newItem.quantity}
-                    onChange={(value) => setNewItem({ ...newItem, quantity: value })}
-                    min={1}
-                  >
-                    <NumberInputField />
-                    <NumberInputStepper>
-                      <NumberIncrementStepper />
-                      <NumberDecrementStepper />
-                    </NumberInputStepper>
-                  </NumberInput>
-                </FormControl>
+                  <FormControl isRequired>
+                    <FormLabel>Prix d'achat</FormLabel>
+                    <NumberInput
+                      value={newItem.purchasePrice}
+                      onChange={(value) => setNewItem({ ...newItem, purchasePrice: value })}
+                      min={0}
+                      precision={2}
+                    >
+                      <NumberInputField />
+                      <NumberInputStepper>
+                        <NumberIncrementStepper />
+                        <NumberDecrementStepper />
+                      </NumberInputStepper>
+                    </NumberInput>
+                  </FormControl>
 
-                <FormControl isRequired>
-                  <FormLabel>Lieu d'achat</FormLabel>
-                  <Input
-                    value={newItem.purchaseLocation}
-                    onChange={(e) => setNewItem({ ...newItem, purchaseLocation: e.target.value })}
-                  />
-                </FormControl>
+                  <FormControl isRequired>
+                    <FormLabel>Quantité</FormLabel>
+                    <NumberInput
+                      value={newItem.quantity}
+                      onChange={(value) => setNewItem({ ...newItem, quantity: value })}
+                      min={1}
+                    >
+                      <NumberInputField />
+                      <NumberInputStepper>
+                        <NumberIncrementStepper />
+                        <NumberDecrementStepper />
+                      </NumberInputStepper>
+                    </NumberInput>
+                  </FormControl>
 
-                <FormControl isRequired>
-                  <FormLabel>Date d'achat</FormLabel>
-                  <Input
-                    type="date"
-                    value={newItem.purchaseDate}
-                    onChange={(e) => setNewItem({ ...newItem, purchaseDate: e.target.value })}
-                  />
-                </FormControl>
+                  <FormControl isRequired>
+                    <FormLabel>Lieu d'achat</FormLabel>
+                    <Input
+                      value={newItem.purchaseLocation}
+                      onChange={(e) => setNewItem({ ...newItem, purchaseLocation: e.target.value })}
+                    />
+                  </FormControl>
 
-                <FormControl isRequired>
-                  <FormLabel>Date de réception prévue</FormLabel>
-                  <Input
-                    type="date"
-                    value={newItem.expectedDate}
-                    onChange={(e) => setNewItem({ ...newItem, expectedDate: e.target.value })}
-                  />
-                </FormControl>
-              </VStack>
-            </ModalBody>
-            <ModalFooter>
-              <Button variant="ghost" mr={3} onClick={onAddClose}>
-                Annuler
-              </Button>
-              <Button
-                colorScheme="blue"
-                onClick={handleAddItem}
-                isLoading={isSubmitting}
-                isDisabled={
-                  !newItem.itemName ||
-                  !newItem.sealedType ||
-                  !newItem.purchasePrice ||
-                  !newItem.purchaseLocation ||
-                  !newItem.purchaseDate ||
-                  !newItem.expectedDate ||
-                  !newItem.selectedSeriesId ||
-                  !newItem.selectedExtensionId
-                }
-              >
-                {isEditMode ? 'Modifier' : 'Ajouter'}
-              </Button>
-            </ModalFooter>
-          </ModalContent>
-        </Modal>
+                  <FormControl isRequired>
+                    <FormLabel>Date d'achat</FormLabel>
+                    <Input
+                      type="date"
+                      value={newItem.purchaseDate}
+                      onChange={(e) => setNewItem({ ...newItem, purchaseDate: e.target.value })}
+                    />
+                  </FormControl>
 
-        {/* Modal de confirmation de suppression */}
-        <Modal isOpen={isDeleteOpen} onClose={onDeleteClose}>
-          <ModalOverlay />
-          <ModalContent>
-            <ModalHeader>Confirmer la suppression</ModalHeader>
-            <ModalCloseButton />
-            <ModalBody>
-              Êtes-vous sûr de vouloir supprimer {selectedItems.size} précommande{selectedItems.size > 1 ? 's' : ''} ?
-              Cette action est irréversible.
-            </ModalBody>
-            <ModalFooter>
-              <Button variant="ghost" mr={3} onClick={onDeleteClose}>
-                Annuler
-              </Button>
-              <Button 
-                colorScheme="red" 
-                onClick={handleDelete}
-                isLoading={isDeleting}
-              >
-                Supprimer
-              </Button>
-            </ModalFooter>
-          </ModalContent>
-        </Modal>
-      </VStack>
-    </Container>
+                  <FormControl isRequired>
+                    <FormLabel>Date de réception prévue</FormLabel>
+                    <Input
+                      type="date"
+                      value={newItem.expectedDate}
+                      onChange={(e) => setNewItem({ ...newItem, expectedDate: e.target.value })}
+                    />
+                  </FormControl>
+                </VStack>
+              </ModalBody>
+              <ModalFooter>
+                <Button variant="ghost" mr={3} onClick={onAddClose}>
+                  Annuler
+                </Button>
+                <Button
+                  colorScheme="blue"
+                  onClick={handleAddItem}
+                  isLoading={isSubmitting}
+                  isDisabled={
+                    !newItem.itemName ||
+                    !newItem.sealedType ||
+                    !newItem.purchasePrice ||
+                    !newItem.purchaseLocation ||
+                    !newItem.purchaseDate ||
+                    !newItem.expectedDate ||
+                    !newItem.selectedSeriesId ||
+                    !newItem.selectedExtensionId
+                  }
+                >
+                  {isEditMode ? 'Modifier' : 'Ajouter'}
+                </Button>
+              </ModalFooter>
+            </ModalContent>
+          </Modal>
+
+          {/* Modal de confirmation de suppression */}
+          <Modal isOpen={isDeleteOpen} onClose={onDeleteClose}>
+            <ModalOverlay />
+            <ModalContent>
+              <ModalHeader>Confirmer la suppression</ModalHeader>
+              <ModalCloseButton />
+              <ModalBody>
+                Êtes-vous sûr de vouloir supprimer {selectedItems.size} précommande{selectedItems.size > 1 ? 's' : ''} ?
+                Cette action est irréversible.
+              </ModalBody>
+              <ModalFooter>
+                <Button variant="ghost" mr={3} onClick={onDeleteClose}>
+                  Annuler
+                </Button>
+                <Button 
+                  colorScheme="red" 
+                  onClick={handleDelete}
+                  isLoading={isDeleting}
+                >
+                  Supprimer
+                </Button>
+              </ModalFooter>
+            </ModalContent>
+          </Modal>
+        </VStack>
+      </Container>
+    </Box>
   );
 }; 

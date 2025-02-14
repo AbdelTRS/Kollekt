@@ -33,17 +33,18 @@ export const Layout = () => {
   };
 
   return (
-    <Box minH="100vh" display="flex" flexDirection="column">
+    <Box minH="100vh" display="flex" flexDirection="column" bg={colorMode === 'dark' ? 'gray.800' : 'gray.50'}>
       <Flex
         as="nav"
         align="center"
         justify="space-between"
         wrap="wrap"
         padding="1.5rem"
-        bg={colorMode === 'dark' ? 'gray.800' : 'white'}
+        bg={colorMode === 'dark' ? 'gray.700' : 'white'}
         color={colorMode === 'dark' ? 'white' : 'gray.800'}
         borderBottom="1px"
-        borderColor={colorMode === 'dark' ? 'gray.700' : 'gray.200'}
+        borderColor={colorMode === 'dark' ? 'gray.600' : 'gray.200'}
+        boxShadow="sm"
       >
         <Flex align="center" mr={8}>
           <Link to="/dashboard">
@@ -52,6 +53,7 @@ export const Layout = () => {
               fontWeight="bold"
               letterSpacing="tight"
               _hover={{ color: 'blue.500' }}
+              transition="all 0.2s"
             >
               Kollekt
             </Text>
@@ -63,8 +65,12 @@ export const Layout = () => {
             <Button 
               variant="ghost" 
               mr={4}
-              _focus={{ boxShadow: 'none' }}
-              _active={{ bg: 'transparent' }}
+              _hover={{
+                bg: colorMode === 'dark' ? 'gray.600' : 'gray.100',
+                transform: 'translateY(-1px)'
+              }}
+              _active={{ bg: colorMode === 'dark' ? 'gray.600' : 'gray.200' }}
+              transition="all 0.2s"
             >
               Ma collection
             </Button>
@@ -73,8 +79,12 @@ export const Layout = () => {
             <Button 
               variant="ghost" 
               mr={4}
-              _focus={{ boxShadow: 'none' }}
-              _active={{ bg: 'transparent' }}
+              _hover={{
+                bg: colorMode === 'dark' ? 'gray.600' : 'gray.100',
+                transform: 'translateY(-1px)'
+              }}
+              _active={{ bg: colorMode === 'dark' ? 'gray.600' : 'gray.200' }}
+              transition="all 0.2s"
             >
               Mes ventes
             </Button>
@@ -83,8 +93,12 @@ export const Layout = () => {
             <Button 
               variant="ghost" 
               mr={4}
-              _focus={{ boxShadow: 'none' }}
-              _active={{ bg: 'transparent' }}
+              _hover={{
+                bg: colorMode === 'dark' ? 'gray.600' : 'gray.100',
+                transform: 'translateY(-1px)'
+              }}
+              _active={{ bg: colorMode === 'dark' ? 'gray.600' : 'gray.200' }}
+              transition="all 0.2s"
             >
               Mes précommandes
             </Button>
@@ -93,8 +107,12 @@ export const Layout = () => {
             <Button 
               variant="ghost" 
               mr={4}
-              _focus={{ boxShadow: 'none' }}
-              _active={{ bg: 'transparent' }}
+              _hover={{
+                bg: colorMode === 'dark' ? 'gray.600' : 'gray.100',
+                transform: 'translateY(-1px)'
+              }}
+              _active={{ bg: colorMode === 'dark' ? 'gray.600' : 'gray.200' }}
+              transition="all 0.2s"
             >
               Ajouter un item
             </Button>
@@ -108,21 +126,35 @@ export const Layout = () => {
             onClick={toggleColorMode}
             variant="ghost"
             mr={4}
-            _focus={{ boxShadow: 'none' }}
-            _active={{ bg: 'transparent' }}
+            _hover={{
+              bg: colorMode === 'dark' ? 'gray.600' : 'gray.100',
+              transform: 'translateY(-1px)'
+            }}
+            _active={{ bg: colorMode === 'dark' ? 'gray.600' : 'gray.200' }}
+            transition="all 0.2s"
           />
           <Button 
             onClick={handleLogout} 
             variant="outline"
-            _focus={{ boxShadow: 'none' }}
-            _active={{ bg: 'transparent' }}
+            borderColor={colorMode === 'dark' ? 'gray.500' : 'gray.300'}
+            _hover={{
+              bg: colorMode === 'dark' ? 'gray.600' : 'gray.100',
+              transform: 'translateY(-1px)',
+              boxShadow: 'sm'
+            }}
+            _active={{ bg: colorMode === 'dark' ? 'gray.600' : 'gray.200' }}
+            transition="all 0.2s"
           >
             Déconnexion
           </Button>
         </Flex>
       </Flex>
 
-      <Box flex="1" bg={colorMode === 'dark' ? 'gray.800' : 'white'} p={4}>
+      <Box 
+        flex="1" 
+        bg={colorMode === 'dark' ? 'gray.800' : 'gray.50'} 
+        p={4}
+      >
         <Outlet />
       </Box>
     </Box>
