@@ -106,7 +106,7 @@ export const Layout = () => {
   );
 
   return (
-    <Box minH="100vh" display="flex" flexDirection="column" bg={colorMode === 'dark' ? 'gray.800' : 'gray.50'}>
+    <Box minH="100vh" display="flex" flexDirection="column" bg={colorMode === 'dark' ? 'gray.800' : 'gray.50'} position="relative">
       <Flex
         as="nav"
         align="center"
@@ -215,6 +215,17 @@ export const Layout = () => {
       <Box flex="1" bg={colorMode === 'dark' ? 'gray.800' : 'gray.50'} p={4}>
         <Outlet />
       </Box>
+
+      <Text
+        position="fixed"
+        bottom="2"
+        right="2"
+        fontSize="xs"
+        color={colorMode === 'dark' ? 'gray.500' : 'gray.400'}
+        userSelect="none"
+      >
+        v.0.0.1
+      </Text>
     </Box>
   );
 };
