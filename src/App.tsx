@@ -6,6 +6,7 @@ import { Dashboard } from './pages/Dashboard';
 import { AddItem } from './pages/AddItem';
 import { MyCollection } from './pages/MyCollection';
 import { MySales } from './pages/MySales';
+import { MyPreorders } from './pages/MyPreorders';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { Layout } from './components/Layout';
@@ -68,6 +69,7 @@ const AppRoutes = () => {
           <Route path="/add-item" element={<AddItem />} />
           <Route path="/my-collection" element={<MyCollection />} />
           <Route path="/my-sales" element={<MySales />} />
+          <Route path="/my-preorders" element={<MyPreorders />} />
         </Route>
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />

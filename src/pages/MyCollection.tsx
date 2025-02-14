@@ -477,7 +477,9 @@ export const MyCollection = () => {
           extension_id,
           market_value
         `)
-        .eq('user_id', session.user.id);
+        .eq('user_id', session.user.id)
+        .eq('is_preorder', false)
+        .order('created_at', { ascending: false });
 
       if (error) throw error;
 

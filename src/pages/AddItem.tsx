@@ -40,6 +40,7 @@ import {
   useToast,
   Spacer,
   useColorModeValue,
+  Checkbox,
 } from '@chakra-ui/react';
 import { CloseIcon, AddIcon } from '@chakra-ui/icons';
 import { useState, useEffect } from 'react';
@@ -96,6 +97,8 @@ interface SealedFormData {
   quantity: string;
   selectedSeriesId: number | null;
   selectedExtensionId: number | null;
+  isPreorder: boolean;
+  expectedDate?: string;
 }
 
 interface CardFormData {
@@ -111,10 +114,28 @@ interface CardFormData {
   quantity: string;
   selectedSeriesId: number | null;
   selectedExtensionId: number | null;
+  isPreorder: boolean;
+  expectedDate?: string;
 }
 
 // Constantes qui peuvent rester en dehors du composant
 const generateId = () => Date.now().toString();
+const defaultSealedForm: SealedFormData = {
+  id: '1',
+  sealedType: '',
+  itemName: '',
+  purchasePrice: '',
+  purchaseLocation: '',
+  purchaseDate: '',
+  sealedImage: null,
+  sealedImagePreview: '',
+  quantity: '1',
+  selectedSeriesId: null,
+  selectedExtensionId: null,
+  isPreorder: false,
+  expectedDate: '',
+};
+
 const defaultCardForm: CardFormData = {
   id: generateId(),
   cardName: '',
@@ -128,6 +149,8 @@ const defaultCardForm: CardFormData = {
   quantity: '1',
   selectedSeriesId: null,
   selectedExtensionId: null,
+  isPreorder: false,
+  expectedDate: '',
 };
 
 export const AddItem = () => {
@@ -198,6 +221,8 @@ export const AddItem = () => {
     quantity: '1',
     selectedSeriesId: null,
     selectedExtensionId: null,
+    isPreorder: false,
+    expectedDate: '',
   }]);
 
   const [cardForms, setCardForms] = useState<CardFormData[]>([{
@@ -213,6 +238,8 @@ export const AddItem = () => {
     quantity: '1',
     selectedSeriesId: null,
     selectedExtensionId: null,
+    isPreorder: false,
+    expectedDate: '',
   }]);
 
   // Fonction pour charger les séries au montage du composant
@@ -523,6 +550,8 @@ export const AddItem = () => {
       quantity: '1',
       selectedSeriesId: null,
       selectedExtensionId: null,
+      isPreorder: false,
+      expectedDate: '',
     }]);
   };
 
@@ -548,6 +577,8 @@ export const AddItem = () => {
       quantity: '1',
       selectedSeriesId: null,
       selectedExtensionId: null,
+      isPreorder: false,
+      expectedDate: '',
     }]);
   };
 
@@ -608,7 +639,9 @@ export const AddItem = () => {
           quantity: parseInt(form.quantity),
           series_id: form.selectedSeriesId,
           extension_id: form.selectedExtensionId,
-          sealed_image: fileName
+          sealed_image: fileName,
+          is_preorder: form.isPreorder,
+          expected_date: form.expectedDate
         }]);
 
         if (error) throw error;
@@ -635,6 +668,8 @@ export const AddItem = () => {
         quantity: '1',
         selectedSeriesId: null,
         selectedExtensionId: null,
+        isPreorder: false,
+        expectedDate: '',
       }]);
       
     } catch (error: any) {
@@ -719,7 +754,9 @@ export const AddItem = () => {
           card_purchase_date: form.cardPurchaseDate,
           card_purchase_location: form.cardPurchaseLocation,
           series_id: form.selectedSeriesId,
-          extension_id: form.selectedExtensionId
+          extension_id: form.selectedExtensionId,
+          is_preorder: form.isPreorder,
+          expected_date: form.expectedDate
         };
 
         // Insérer la carte dans la base de données
@@ -1076,6 +1113,29 @@ export const AddItem = () => {
                                     />
                                   </FormControl>
 
+                                  <FormControl>
+                                    <FormLabel fontWeight="bold">Précommande</FormLabel>
+                                    <Checkbox
+                                      size="lg"
+                                      isChecked={form.isPreorder}
+                                      onChange={(e) => updateSealedForm(form.id, 'isPreorder', e.target.checked)}
+                                    >
+                                      C'est une précommande
+                                    </Checkbox>
+                                  </FormControl>
+
+                                  {form.isPreorder && (
+                                    <FormControl isRequired>
+                                      <FormLabel fontWeight="bold">Date de réception prévue</FormLabel>
+                                      <Input
+                                        size="lg"
+                                        type="date"
+                                        value={form.expectedDate}
+                                        onChange={(e) => updateSealedForm(form.id, 'expectedDate', e.target.value)}
+                                      />
+                                    </FormControl>
+                                  )}
+
                                   <FormControl isRequired>
                                     <FormLabel fontWeight="bold">Image</FormLabel>
                                     <VStack spacing={4} align="stretch" w="100%">
@@ -1327,6 +1387,29 @@ export const AddItem = () => {
                                       placeholder="Où avez-vous obtenu cette carte ?"
                                     />
                                   </FormControl>
+
+                                  <FormControl>
+                                    <FormLabel fontWeight="bold">Précommande</FormLabel>
+                                    <Checkbox
+                                      size="lg"
+                                      isChecked={form.isPreorder}
+                                      onChange={(e) => updateCardForm(form.id, 'isPreorder', e.target.checked)}
+                                    >
+                                      C'est une précommande
+                                    </Checkbox>
+                                  </FormControl>
+
+                                  {form.isPreorder && (
+                                    <FormControl isRequired>
+                                      <FormLabel fontWeight="bold">Date de réception prévue</FormLabel>
+                                      <Input
+                                        size="lg"
+                                        type="date"
+                                        value={form.expectedDate}
+                                        onChange={(e) => updateCardForm(form.id, 'expectedDate', e.target.value)}
+                                      />
+                                    </FormControl>
+                                  )}
 
                                   <FormControl isRequired>
                                     <FormLabel fontWeight="bold">Image</FormLabel>

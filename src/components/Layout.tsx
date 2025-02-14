@@ -79,6 +79,16 @@ export const Layout = () => {
               Mes ventes
             </Button>
           </Link>
+          <Link to="/my-preorders">
+            <Button 
+              variant="ghost" 
+              mr={4}
+              _focus={{ boxShadow: 'none' }}
+              _active={{ bg: 'transparent' }}
+            >
+              Mes précommandes
+            </Button>
+          </Link>
           <Link to="/add-item">
             <Button 
               variant="ghost" 
