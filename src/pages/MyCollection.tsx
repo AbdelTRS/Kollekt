@@ -1041,6 +1041,7 @@ export const MyCollection = () => {
                         )}
                       </HStack>
                     </Th>
+                    <Th borderColor={borderColor} color={textColor}>Prix d'achat total</Th>
                   </Tr>
                 </Thead>
                 <Tbody>
@@ -1111,6 +1112,9 @@ export const MyCollection = () => {
                       <Td sx={{ userSelect: 'none' }}>{group.total_quantity}</Td>
                       <Td sx={{ userSelect: 'none' }}>
                         {new Date(group.latest_date).toLocaleDateString()}
+                      </Td>
+                      <Td sx={{ userSelect: 'none' }}>
+                        {(group.average_price * group.total_quantity).toLocaleString('fr-FR', { style: 'currency', currency: 'EUR' })}
                       </Td>
                     </Tr>
                   ))}

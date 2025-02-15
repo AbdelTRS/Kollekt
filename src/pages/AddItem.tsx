@@ -1073,6 +1073,31 @@ export const AddItem = () => {
                             <Card bg={useColorModeValue('white', 'gray.700')} borderColor={useColorModeValue('gray.200', 'gray.600')} width="100%">
                               <CardBody>
                                 <VStack spacing={4}>
+
+                                <FormControl isRequired>
+                                    <FormLabel fontWeight="bold">Type</FormLabel>
+                                    <Select
+                                      size="lg"
+                                      value={form.sealedType}
+                                      onChange={(e) => updateSealedForm(form.id, 'sealedType', e.target.value)}
+                                      placeholder="Sélectionner un type"
+                                    >
+                                      <option value="Elite Trainer Box">Elite Trainer Box</option>
+                                      <option value="Blister">Blister</option>
+                                      <option value="Display">Display</option>
+                                      <option value="Coffret">Coffret</option>
+                                      <option value="UPC">UPC</option>
+                                      <option value="Tripack">Tripack</option>
+                                      <option value="Duopack">Duopack</option>
+                                      <option value="Bundle">Bundle</option>
+                                      <option value="Demi display">Demi display</option>
+                                      <option value="Mini-tins">Mini-tins</option>
+                                      <option value="Tin cube">Tin cube</option>
+                                      <option value="Booster en lose">Booster en lose</option>
+                                      <option value="Artset">Artset</option>
+                                    </Select>
+                                  </FormControl>
+                                  
                                   <FormControl isRequired>
                                     <FormLabel fontWeight="bold">Série</FormLabel>
                                     <Select
@@ -1096,7 +1121,7 @@ export const AddItem = () => {
                                       value={form.selectedExtensionId?.toString() || ''}
                                       onChange={(e) => updateSealedForm(form.id, 'selectedExtensionId', e.target.value ? parseInt(e.target.value) : null)}
                                       placeholder="Sélectionner une extension"
-                                      isDisabled={!form.selectedSeriesId || SEALED_TYPES_WITHOUT_EXTENSION.includes(form.sealedType)}
+                                      isDisabled={!form.selectedSeriesId}
                                     >
                                       {getFilteredExtensions(form.selectedSeriesId).map((extension) => (
                                         <option key={extension.id} value={extension.id}>
@@ -1106,29 +1131,7 @@ export const AddItem = () => {
                                     </Select>
                                   </FormControl>
 
-                                  <FormControl isRequired>
-                                    <FormLabel fontWeight="bold">Type</FormLabel>
-                                    <Select
-                                      size="lg"
-                                      value={form.sealedType}
-                                      onChange={(e) => updateSealedForm(form.id, 'sealedType', e.target.value)}
-                                      placeholder="Sélectionner un type"
-                                    >
-                                      <option value="Elite Trainer Box">Elite Trainer Box</option>
-                                      <option value="Blister">Blister</option>
-                                      <option value="Display">Display</option>
-                                      <option value="Coffret">Coffret</option>
-                                      <option value="UPC">UPC</option>
-                                      <option value="Tripack">Tripack</option>
-                                      <option value="Duopack">Duopack</option>
-                                      <option value="Bundle">Bundle</option>
-                                      <option value="Demi display">Demi display</option>
-                                      <option value="Mini-tins">Mini-tins</option>
-                                      <option value="Tin cube">Tin cube</option>
-                                      <option value="Booster en lose">Booster en lose</option>
-                                      <option value="Artset">Artset</option>
-                                    </Select>
-                                  </FormControl>
+                                  
 
                                   <FormControl isRequired>
                                     <FormLabel fontWeight="bold">Nom de l'item</FormLabel>

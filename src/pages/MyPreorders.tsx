@@ -739,8 +739,8 @@ export const MyPreorders = () => {
             </Select>
 
             {/* Champ Extension */}
-            {selectedSeriesId && !SEALED_TYPES_WITHOUT_EXTENSION.includes(newItem.sealedType) && (
-              <FormControl isRequired>
+            {selectedSeriesId && (
+              <FormControl isRequired={!SEALED_TYPES_WITHOUT_EXTENSION.includes(newItem.sealedType)}>
                 <FormLabel>Extension</FormLabel>
                 <Select
                   value={selectedExtensionId?.toString() || ''}
@@ -748,6 +748,7 @@ export const MyPreorders = () => {
                   placeholder="Sélectionner une extension"
                   isDisabled={!selectedSeriesId}
                 >
+                  <option value="">Sélectionner une extension</option>
                   {filteredExtensions.map(extension => (
                     <option key={extension.id} value={extension.id}>
                       {extension.name} ({extension.code})
@@ -1045,8 +1046,8 @@ export const MyPreorders = () => {
                   </FormControl>
 
                   {/* Champ Extension */}
-                  {newItem.sealedType && !SEALED_TYPES_WITHOUT_EXTENSION.includes(newItem.sealedType) && (
-                    <FormControl isRequired>
+                  {newItem.selectedSeriesId && (
+                    <FormControl isRequired={!SEALED_TYPES_WITHOUT_EXTENSION.includes(newItem.sealedType)}>
                       <FormLabel>Extension</FormLabel>
                       <Select
                         value={newItem.selectedExtensionId?.toString() || ''}
@@ -1138,8 +1139,7 @@ export const MyPreorders = () => {
                     !newItem.purchasePrice ||
                     !newItem.purchaseLocation ||
                     !newItem.purchaseDate ||
-                    !newItem.selectedSeriesId ||
-                    (!SEALED_TYPES_WITHOUT_EXTENSION.includes(newItem.sealedType) && !newItem.selectedExtensionId)
+                    !newItem.selectedSeriesId
                   }
                 >
                   {isEditMode ? 'Modifier' : 'Ajouter'}

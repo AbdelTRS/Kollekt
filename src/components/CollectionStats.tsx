@@ -8,6 +8,8 @@ import {
   useColorModeValue,
   Text,
   Flex,
+  Badge,
+  VStack,
 } from '@chakra-ui/react';
 import { 
   FaShoppingCart, 
@@ -19,6 +21,7 @@ import {
 type Item = {
   id: string;
   type: 'SCELLE' | 'CARTE';
+  sub_type?: string;
   quantity: number;
   purchase_price?: number;
   card_purchase_price?: number;
@@ -35,6 +38,8 @@ export const CollectionStats = ({ items }: CollectionStatsProps) => {
   const borderColor = useColorModeValue('gray.200', 'gray.600');
   const labelColor = useColorModeValue('gray.600', 'gray.300');
   const helpTextColor = useColorModeValue('gray.500', 'gray.400');
+  const profitColor = useColorModeValue('green.500', 'green.300');
+  const lossColor = useColorModeValue('red.500', 'red.300');
 
   // Nouvelles couleurs pour les valeurs
   const valueColor1 = useColorModeValue('blue.500', 'blue.300'); // Pour la valeur d'achat
@@ -58,11 +63,20 @@ export const CollectionStats = ({ items }: CollectionStatsProps) => {
   const totalMarketValue = items.reduce((acc, item) => {
     return acc + (item.market_value || 0) * item.quantity;
   }, 0);
+
+  // Calculer le bénéfice potentiel
+  const potentialProfit = totalMarketValue - totalValue;
   
-  const sealedItems = items.filter(item => item.type === 'SCELLE');
-  const cardItems = items.filter(item => item.type === 'CARTE');
-  const totalSealed = sealedItems.reduce((acc, item) => acc + item.quantity, 0);
-  const totalCards = cardItems.reduce((acc, item) => acc + item.quantity, 0);
+  // Calculer la distribution par type d'item
+  const itemTypes = items.reduce((acc, item) => {
+    if (item.type === 'SCELLE' && item.sub_type) {
+      const key = item.sub_type;
+      acc[key] = (acc[key] || 0) + item.quantity;
+    } else if (item.type === 'CARTE') {
+      acc['Cartes'] = (acc['Cartes'] || 0) + item.quantity;
+    }
+    return acc;
+  }, {} as { [key: string]: number });
 
   const StatBox = ({ 
     label, 
@@ -111,6 +125,7 @@ export const CollectionStats = ({ items }: CollectionStatsProps) => {
           <StatHelpText 
             color={helpTextColor}
             fontSize={{ base: 'xs', md: 'sm' }}
+            mt={2}
           >
             {helpText}
           </StatHelpText>
@@ -135,6 +150,12 @@ export const CollectionStats = ({ items }: CollectionStatsProps) => {
       <StatBox
         label="Valeur sur le marché"
         value={totalMarketValue > 0 ? totalMarketValue.toLocaleString('fr-FR', { style: 'currency', currency: 'EUR' }) : '-'}
+        helpText={
+          <Text color={potentialProfit >= 0 ? profitColor : lossColor} fontWeight="bold">
+            {potentialProfit >= 0 ? '+' : ''}
+            {potentialProfit.toLocaleString('fr-FR', { style: 'currency', currency: 'EUR' })}
+          </Text>
+        }
         icon={<FaChartLine size="1.2em" />}
         valueColor={valueColor2}
       />
@@ -151,11 +172,16 @@ export const CollectionStats = ({ items }: CollectionStatsProps) => {
         label="Distribution"
         value={totalItems}
         helpText={
-          <Flex justifyContent="space-between" fontSize={{ base: 'xs', md: 'sm' }}>
-            <Box as="span" color="blue.300">Scellés: {totalSealed}</Box>
-            <Box as="span" mx={1}>|</Box>
-            <Box as="span" color="purple.300">Cartes: {totalCards}</Box>
-          </Flex>
+          <VStack spacing={2} align="stretch">
+            {Object.entries(itemTypes).map(([type, count]) => (
+              <Flex key={type} justify="space-between">
+                <Badge colorScheme={type === 'Cartes' ? 'purple' : 'blue'}>
+                  {type}
+                </Badge>
+                <Text>{count}</Text>
+              </Flex>
+            ))}
+          </VStack>
         }
         icon={<FaBoxes size="1.2em" />}
         valueColor={valueColor4}
