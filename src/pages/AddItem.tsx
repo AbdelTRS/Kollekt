@@ -153,6 +153,15 @@ const defaultCardForm: CardFormData = {
   expectedDate: '',
 };
 
+// Types de produits scellés qui ne nécessitent pas d'extension
+const SEALED_TYPES_WITHOUT_EXTENSION = [
+  'UPC',
+  'Duopack',
+  'Tin cube',
+  'Coffret',
+  'Bundle'
+];
+
 export const AddItem = () => {
   // Déplacer l'état isSubmitting à l'intérieur du composant
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -608,10 +617,23 @@ export const AddItem = () => {
 
     try {
       for (const form of sealedForms) {
-        if (!form.selectedSeriesId || !form.selectedExtensionId) {
+        if (!form.selectedSeriesId) {
           toast({
             title: "Erreur",
-            description: "Veuillez sélectionner une série et une extension pour tous les produits",
+            description: "Veuillez sélectionner une série pour tous les produits",
+            status: "error",
+            duration: 3000,
+            isClosable: true,
+          });
+          setIsLoading(false);
+          return;
+        }
+
+        // Vérifier l'extension seulement si le type de produit le nécessite
+        if (!SEALED_TYPES_WITHOUT_EXTENSION.includes(form.sealedType) && !form.selectedExtensionId) {
+          toast({
+            title: "Erreur",
+            description: "Veuillez sélectionner une extension pour ce type de produit",
             status: "error",
             duration: 3000,
             isClosable: true,
@@ -681,7 +703,7 @@ export const AddItem = () => {
           purchase_location: form.purchaseLocation,
           quantity: parseInt(form.quantity),
           series_id: form.selectedSeriesId,
-          extension_id: form.selectedExtensionId,
+          extension_id: SEALED_TYPES_WITHOUT_EXTENSION.includes(form.sealedType) ? null : form.selectedExtensionId,
           sealed_image: fileName,
           is_preorder: form.isPreorder,
           expected_date: formattedExpectedDate
@@ -1067,14 +1089,14 @@ export const AddItem = () => {
                                     </Select>
                                   </FormControl>
 
-                                  <FormControl isRequired>
+                                  <FormControl isRequired={!SEALED_TYPES_WITHOUT_EXTENSION.includes(form.sealedType)}>
                                     <FormLabel fontWeight="bold">Extension</FormLabel>
                                     <Select
                                       size="lg"
                                       value={form.selectedExtensionId?.toString() || ''}
                                       onChange={(e) => updateSealedForm(form.id, 'selectedExtensionId', e.target.value ? parseInt(e.target.value) : null)}
                                       placeholder="Sélectionner une extension"
-                                      isDisabled={!form.selectedSeriesId}
+                                      isDisabled={!form.selectedSeriesId || SEALED_TYPES_WITHOUT_EXTENSION.includes(form.sealedType)}
                                     >
                                       {getFilteredExtensions(form.selectedSeriesId).map((extension) => (
                                         <option key={extension.id} value={extension.id}>

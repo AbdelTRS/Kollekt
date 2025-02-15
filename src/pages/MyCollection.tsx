@@ -1101,7 +1101,9 @@ export const MyCollection = () => {
                         )}
                       </Td>
                       <Td sx={{ userSelect: 'none' }}>
-                        {extensions.find(e => e.id === group.extension_id)?.code || '-'}
+                        {group.extension_id 
+                          ? extensions.find(e => e.id === group.extension_id)?.code 
+                          : series.find(s => s.id === group.series_id)?.code || '-'}
                       </Td>
                       <Td sx={{ userSelect: 'none' }}>
                         {group.average_price > 0 ? `${group.average_price.toFixed(2)}€` : '-'}

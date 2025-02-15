@@ -101,6 +101,9 @@ type ExistingImage = {
   url: string;
 };
 
+// Types de produits scellés qui ne nécessitent pas d'extension
+const SEALED_TYPES_WITHOUT_EXTENSION = ['UPC', 'Duopack', 'Tin cube', 'Pokébox', 'Coffret'];
+
 export const MyPreorders = () => {
   const { session } = useAuth();
   const toast = useToast();
@@ -438,9 +441,41 @@ export const MyPreorders = () => {
 
   // Modification de la fonction handleAddItem pour gérer l'édition
   const handleAddItem = async () => {
-    setIsSubmitting(true);
     try {
-      if (!session?.user?.id) return;
+      setIsLoading(true);
+
+      // Validation de base
+      if (!newItem.selectedSeriesId) {
+        toast({
+          title: 'Erreur',
+          description: 'Veuillez sélectionner une série',
+          status: 'error',
+          duration: 3000,
+          isClosable: true,
+        });
+        setIsLoading(false);
+        return;
+      }
+
+      // Validation de l'extension seulement si nécessaire
+      if (newItem.sealedType && 
+          !SEALED_TYPES_WITHOUT_EXTENSION.includes(newItem.sealedType) && 
+          !newItem.selectedExtensionId) {
+        toast({
+          title: 'Erreur',
+          description: 'Veuillez sélectionner une extension',
+          status: 'error',
+          duration: 3000,
+          isClosable: true,
+        });
+        setIsLoading(false);
+        return;
+      }
+
+      if (!session?.user?.id) {
+        setIsLoading(false);
+        return;
+      }
 
       let imagePath = newItem.sealedImage;
       if (selectedImage) {
@@ -523,7 +558,7 @@ export const MyPreorders = () => {
         isClosable: true,
       });
     } finally {
-      setIsSubmitting(false);
+      setIsLoading(false);
     }
   };
 
@@ -703,22 +738,24 @@ export const MyPreorders = () => {
               ))}
             </Select>
 
-            <Select
-              value={selectedExtensionId?.toString() || ''}
-              onChange={(e) => setSelectedExtensionId(e.target.value ? parseInt(e.target.value) : null)}
-              placeholder="Toutes les extensions"
-              isDisabled={!selectedSeriesId}
-              bg={bgColor}
-              borderColor={borderColor}
-              _hover={{ borderColor: 'blue.400' }}
-              color={textColor}
-            >
-              {extensions.filter(ext => ext.series_id === selectedSeriesId).map(extension => (
-                <option key={extension.id} value={extension.id}>
-                  {extension.name} ({extension.code})
-                </option>
-              ))}
-            </Select>
+            {/* Champ Extension */}
+            {selectedSeriesId && !SEALED_TYPES_WITHOUT_EXTENSION.includes(newItem.sealedType) && (
+              <FormControl isRequired>
+                <FormLabel>Extension</FormLabel>
+                <Select
+                  value={selectedExtensionId?.toString() || ''}
+                  onChange={(e) => setSelectedExtensionId(e.target.value ? parseInt(e.target.value) : null)}
+                  placeholder="Sélectionner une extension"
+                  isDisabled={!selectedSeriesId}
+                >
+                  {filteredExtensions.map(extension => (
+                    <option key={extension.id} value={extension.id}>
+                      {extension.name} ({extension.code})
+                    </option>
+                  ))}
+                </Select>
+              </FormControl>
+            )}
 
             <Input
               placeholder="Rechercher..."
@@ -1007,24 +1044,27 @@ export const MyPreorders = () => {
                     </Select>
                   </FormControl>
 
-                  <FormControl isRequired>
-                    <FormLabel>Extension</FormLabel>
-                    <Select
-                      value={newItem.selectedExtensionId?.toString() || ''}
-                      onChange={(e) => setNewItem({
-                        ...newItem,
-                        selectedExtensionId: e.target.value ? parseInt(e.target.value) : null
-                      })}
-                      isDisabled={!newItem.selectedSeriesId}
-                    >
-                      <option value="">Sélectionner une extension</option>
-                      {filteredExtensions.map(extension => (
-                        <option key={extension.id} value={extension.id}>
-                          {extension.name} ({extension.code})
-                        </option>
-                      ))}
-                    </Select>
-                  </FormControl>
+                  {/* Champ Extension */}
+                  {newItem.sealedType && !SEALED_TYPES_WITHOUT_EXTENSION.includes(newItem.sealedType) && (
+                    <FormControl isRequired>
+                      <FormLabel>Extension</FormLabel>
+                      <Select
+                        value={newItem.selectedExtensionId?.toString() || ''}
+                        onChange={(e) => setNewItem({
+                          ...newItem,
+                          selectedExtensionId: e.target.value ? parseInt(e.target.value) : null
+                        })}
+                        isDisabled={!newItem.selectedSeriesId}
+                      >
+                        <option value="">Sélectionner une extension</option>
+                        {filteredExtensions.map(extension => (
+                          <option key={extension.id} value={extension.id}>
+                            {extension.name} ({extension.code})
+                          </option>
+                        ))}
+                      </Select>
+                    </FormControl>
+                  )}
 
                   <FormControl isRequired>
                     <FormLabel>Prix d'achat</FormLabel>
@@ -1088,8 +1128,8 @@ export const MyPreorders = () => {
                 <Button variant="ghost" mr={3} onClick={onAddClose}>
                   Annuler
                 </Button>
-                <Button
-                  colorScheme="blue"
+                <Button 
+                  colorScheme="blue" 
                   onClick={handleAddItem}
                   isLoading={isSubmitting}
                   isDisabled={
@@ -1098,9 +1138,8 @@ export const MyPreorders = () => {
                     !newItem.purchasePrice ||
                     !newItem.purchaseLocation ||
                     !newItem.purchaseDate ||
-                    !newItem.expectedDate ||
                     !newItem.selectedSeriesId ||
-                    !newItem.selectedExtensionId
+                    (!SEALED_TYPES_WITHOUT_EXTENSION.includes(newItem.sealedType) && !newItem.selectedExtensionId)
                   }
                 >
                   {isEditMode ? 'Modifier' : 'Ajouter'}
