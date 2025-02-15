@@ -159,6 +159,10 @@ export const MyPreorders = () => {
   const [filteredPreorders, setFilteredPreorders] = useState<PreorderItem[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
 
+  // Nouveaux états pour le tri
+  const [sortField, setSortField] = useState<'orderDate' | 'expectedDate'>('orderDate');
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
+
   // Charger les précommandes
   const fetchPreorders = useCallback(async () => {
     try {
@@ -585,7 +589,7 @@ export const MyPreorders = () => {
 
   useEffect(() => {
     filterPreorders();
-  }, [preorders, selectedMonth, selectedSeriesId, selectedExtensionId, searchQuery]);
+  }, [preorders, selectedMonth, selectedSeriesId, selectedExtensionId, searchQuery, sortField, sortDirection]);
 
   const filterPreorders = () => {
     let filtered = [...preorders];
@@ -617,6 +621,23 @@ export const MyPreorders = () => {
         (preorder.type === 'SCELLE' && preorder.item_name?.toLowerCase().includes(query))
       );
     }
+
+    // Tri des résultats
+    filtered.sort((a, b) => {
+      let dateA: Date, dateB: Date;
+      
+      if (sortField === 'orderDate') {
+        dateA = new Date(a.type === 'CARTE' ? a.card_purchase_date! : a.purchase_date!);
+        dateB = new Date(b.type === 'CARTE' ? b.card_purchase_date! : b.purchase_date!);
+      } else { // expectedDate
+        dateA = new Date(a.expected_date || '');
+        dateB = new Date(b.expected_date || '');
+      }
+
+      return sortDirection === 'asc' 
+        ? dateA.getTime() - dateB.getTime()
+        : dateB.getTime() - dateA.getTime();
+    });
 
     setFilteredPreorders(filtered);
   };
@@ -862,11 +883,49 @@ export const MyPreorders = () => {
                     </Th>
                     <Th width="50px" borderColor={tableBorderColor}>Image</Th>
                     <Th borderColor={tableBorderColor} color={textColor}>Nom</Th>
-                    <Th borderColor={tableBorderColor} color={textColor}>Extension</Th>
+                    <Th borderColor={tableBorderColor} color={textColor}>Lieu d'achat</Th>
                     <Th borderColor={tableBorderColor} color={textColor}>Prix</Th>
                     <Th borderColor={tableBorderColor} color={textColor}>Quantité</Th>
-                    <Th borderColor={tableBorderColor} color={textColor}>Date de commande</Th>
-                    <Th borderColor={tableBorderColor} color={textColor}>Date prévue</Th>
+                    <Th 
+                      borderColor={tableBorderColor} 
+                      color={textColor} 
+                      cursor="pointer"
+                      onClick={() => {
+                        if (sortField === 'orderDate') {
+                          setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+                        } else {
+                          setSortField('orderDate');
+                          setSortDirection('desc');
+                        }
+                      }}
+                    >
+                      <HStack spacing={1}>
+                        <Text>Date de commande</Text>
+                        {sortField === 'orderDate' && (
+                          <Box>{sortDirection === 'asc' ? '▲' : '▼'}</Box>
+                        )}
+                      </HStack>
+                    </Th>
+                    <Th 
+                      borderColor={tableBorderColor} 
+                      color={textColor}
+                      cursor="pointer"
+                      onClick={() => {
+                        if (sortField === 'expectedDate') {
+                          setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+                        } else {
+                          setSortField('expectedDate');
+                          setSortDirection('desc');
+                        }
+                      }}
+                    >
+                      <HStack spacing={1}>
+                        <Text>Date prévue</Text>
+                        {sortField === 'expectedDate' && (
+                          <Box>{sortDirection === 'asc' ? '▲' : '▼'}</Box>
+                        )}
+                      </HStack>
+                    </Th>
                   </Tr>
                 </Thead>
                 <Tbody>
@@ -906,7 +965,9 @@ export const MyPreorders = () => {
                           </Badge>
                         )}
                       </Td>
-                      <Td borderColor={tableBorderColor} color={textColor}>{item.extension_id}</Td>
+                      <Td borderColor={tableBorderColor} color={textColor}>
+                        {item.type === 'CARTE' ? item.card_purchase_location : item.purchase_location}
+                      </Td>
                       <Td borderColor={tableBorderColor} color={textColor}>
                         {item.type === 'CARTE' 
                           ? `${item.card_purchase_price}€`
