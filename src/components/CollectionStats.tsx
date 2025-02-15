@@ -10,6 +10,11 @@ import {
   Flex,
   Badge,
   VStack,
+  Popover,
+  PopoverTrigger,
+  PopoverContent,
+  PopoverBody,
+  Portal,
 } from '@chakra-ui/react';
 import { 
   FaShoppingCart, 
@@ -168,24 +173,45 @@ export const CollectionStats = ({ items }: CollectionStatsProps) => {
         valueColor={valueColor3}
       />
 
-      <StatBox
-        label="Distribution"
-        value={totalItems}
-        helpText={
-          <VStack spacing={2} align="stretch">
-            {Object.entries(itemTypes).map(([type, count]) => (
-              <Flex key={type} justify="space-between">
-                <Badge colorScheme={type === 'Cartes' ? 'purple' : 'blue'}>
-                  {type}
-                </Badge>
-                <Text>{count}</Text>
-              </Flex>
-            ))}
-          </VStack>
-        }
-        icon={<FaBoxes size="1.2em" />}
-        valueColor={valueColor4}
-      />
+      <Popover trigger="hover" placement="bottom" gutter={12}>
+        <PopoverTrigger>
+          <Box>
+            <StatBox
+              label="Distribution"
+              value={totalItems}
+              helpText={
+                <Text fontSize="sm" color={helpTextColor}>
+                  Survoler pour voir les détails
+                </Text>
+              }
+              icon={<FaBoxes size="1.2em" />}
+              valueColor={valueColor4}
+            />
+          </Box>
+        </PopoverTrigger>
+        <Portal>
+          <PopoverContent 
+            bg={bgColor} 
+            borderColor={borderColor}
+            boxShadow="lg"
+            _focus={{ outline: 'none' }}
+            maxW="300px"
+          >
+            <PopoverBody>
+              <VStack spacing={2} align="stretch">
+                {Object.entries(itemTypes).map(([type, count]) => (
+                  <Flex key={type} justify="space-between" align="center">
+                    <Badge colorScheme={type === 'Cartes' ? 'purple' : 'blue'} px={2} py={1}>
+                      {type}
+                    </Badge>
+                    <Text fontWeight="bold">{count}</Text>
+                  </Flex>
+                ))}
+              </VStack>
+            </PopoverBody>
+          </PopoverContent>
+        </Portal>
+      </Popover>
     </SimpleGrid>
   );
 }; 
